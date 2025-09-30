@@ -1,0 +1,92 @@
+﻿<Window x:Class="Vekotin.ControlPanel"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:Vekotin"
+        mc:Ignorable="d"
+        Title="ControlPanel" 
+        Height="450" 
+        Width="800"
+        WindowStartupLocation="CenterScreen"
+        Background="#F5F5F5">
+    
+    <Window.Resources>
+        <local:CountToVisibilityConverter x:Key="CountToVisibilityConverter"/>
+    </Window.Resources>
+
+    <Grid Margin="15">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- Header -->
+        <StackPanel Grid.Row="0" Margin="0,0,0,15">
+            <TextBlock Text="Widget Control Panel" 
+                       FontSize="24" 
+                       FontWeight="Bold"
+                       Foreground="#333"/>
+            <TextBlock Text="Manage your desktop widgets" 
+                       FontSize="12" 
+                       Foreground="#666"
+                       Margin="0,5,0,0"/>
+        </StackPanel>
+
+        <!-- Widget List -->
+        <Border Grid.Row="1" 
+                BorderBrush="#DDD" 
+                BorderThickness="1" 
+                CornerRadius="4"
+                Background="White">
+            <Grid>
+                <ListBox x:Name="WidgetListBox"
+                         ItemsSource="{Binding AvailableWidgets}"
+                         BorderThickness="0"
+                         Padding="5">
+                    <ListBox.ItemTemplate>
+                        <DataTemplate>
+                            <StackPanel Margin="5">
+                                <TextBlock Text="{Binding Name}" 
+                                          FontWeight="SemiBold"
+                                          FontSize="14"/>
+                                <TextBlock Text="{Binding Manifest.Version, StringFormat='Version: {0}'}" 
+                                          FontSize="11"
+                                          Foreground="#666"
+                                          Margin="0,2,0,0"/>
+                            </StackPanel>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+
+                <!-- Empty state -->
+                <TextBlock Text="No widgets found. Add widgets to the 'widgets' folder."
+                          HorizontalAlignment="Center"
+                          VerticalAlignment="Center"
+                          Foreground="#999"
+                          TextWrapping="Wrap"
+                          TextAlignment="Center"
+                          Margin="20"
+                          Visibility="{Binding AvailableWidgets.Count, Converter={StaticResource CountToVisibilityConverter}}"/>
+            </Grid>
+        </Border>
+
+        <!-- Buttons -->
+        <StackPanel Grid.Row="2" 
+                    Orientation="Horizontal" 
+                    HorizontalAlignment="Right"
+                    Margin="0,15,0,0">
+            <Button Content="Refresh" 
+                    Click="RefreshWidgets_Click"
+                    MinWidth="100"/>
+            <Button Content="Load Widget" 
+                    Click="LoadWidget_Click"
+                    MinWidth="100"/>
+            <Button Content="Close All" 
+                    Click="CloseAllWidgets_Click"
+                    MinWidth="100"
+                    Background="#DC3545"/>
+        </StackPanel>
+    </Grid>
+</Window>
