@@ -1,10 +1,12 @@
-﻿using System;
-using System.IO;
+﻿using System.IO;
 using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Input;
 using System.Windows.Interop;
+
 using Microsoft.Web.WebView2.Core;
+
+using Vekotin.Bridges;
 
 namespace Vekotin
 {
@@ -52,6 +54,10 @@ namespace Vekotin
                 WebView.CoreWebView2.Settings.AreDevToolsEnabled = true;
                 WebView.CoreWebView2.Settings.AreDefaultContextMenusEnabled = true;
                 WebView.CoreWebView2.Settings.IsStatusBarEnabled = false;
+
+                // Bridges
+                WebView.CoreWebView2.AddHostObjectToScript("cpu", new CpuBridge());
+                WebView.CoreWebView2.AddHostObjectToScript("ram", new RamBridge());
 
                 string htmlPath = Path.Combine(widgetPath, "index.html");
                 if (File.Exists(htmlPath))
