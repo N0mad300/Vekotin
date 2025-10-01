@@ -76,7 +76,7 @@ namespace Vekotin
             }
             catch (Exception ex)
             {
-                MessageBox.Show(
+                System.Windows.MessageBox.Show(
                     $"Error initializing WebView2: {ex.Message}\n\nMake sure WebView2 Runtime is installed.",
                     "Error",
                     MessageBoxButton.OK,
@@ -88,7 +88,7 @@ namespace Vekotin
         private void WebView_WebMessageReceived(object sender, CoreWebView2WebMessageReceivedEventArgs e)
         {
             string message = e.TryGetWebMessageAsString();
-            MessageBox.Show($"Widget message: {message}", "Message from Widget");
+            System.Windows.MessageBox.Show($"Widget message: {message}", "Message from Widget");
         }
 
         private void Window_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)

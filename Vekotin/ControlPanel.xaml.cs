@@ -8,13 +8,14 @@ using System.Text.Json;
 using System.Windows;
 using System.Windows.Forms;
 using System.Drawing;
+
 using MessageBox = System.Windows.MessageBox;
 
 namespace Vekotin
 {
     public partial class ControlPanel : Window
     {
-        //private NotifyIcon trayIcon;
+        private NotifyIcon trayIcon;
         private List<WidgetWindow> activeWidgets = new List<WidgetWindow>();
         public ObservableCollection<WidgetListItem> AvailableWidgets { get; set; }
 
@@ -23,11 +24,11 @@ namespace Vekotin
             InitializeComponent();
             AvailableWidgets = new ObservableCollection<WidgetListItem>();
             DataContext = this;
-            //SetupTrayIcon();
+            SetupTrayIcon();
             LoadAvailableWidgets();
         }
 
-        /*
+        
         private void SetupTrayIcon()
         {
             trayIcon = new NotifyIcon
@@ -57,7 +58,7 @@ namespace Vekotin
                 this.Activate();
             };
         }
-        */
+        
 
         private void LoadAvailableWidgets()
         {

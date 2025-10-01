@@ -6,11 +6,9 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <UseWPF>true</UseWPF>
+    <ProduceReferenceAssembly>True</ProduceReferenceAssembly>
+    <UseWindowsForms>True</UseWindowsForms>
   </PropertyGroup>
-
-	<ItemGroup>
-		<Reference Include="System.Windows.Forms" />
-	</ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.3485.44" />
