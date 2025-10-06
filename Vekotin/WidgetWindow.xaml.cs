@@ -1,7 +1,6 @@
 ﻿using System.IO;
 using System.Runtime.InteropServices;
 using System.Windows;
-using System.Windows.Input;
 using System.Windows.Interop;
 
 using Microsoft.Web.WebView2.Core;
@@ -14,7 +13,6 @@ namespace Vekotin
     {
         private string widgetPath;
         private WidgetManifest manifest;
-        private bool isClickThrough = false;
 
         [DllImport("user32.dll")]
         private static extern int SetWindowLong(IntPtr hWnd, int nIndex, int dwNewLong);
@@ -23,7 +21,6 @@ namespace Vekotin
         private static extern int GetWindowLong(IntPtr hWnd, int nIndex);
 
         private const int GWL_EXSTYLE = -20;
-        private const int WS_EX_TRANSPARENT = 0x20;
         private const int WS_EX_TOOLWINDOW = 0x80;
 
         public WidgetWindow(string widgetPath, WidgetManifest manifest)
@@ -49,7 +46,15 @@ namespace Vekotin
         {
             try
             {
-                await WebView.EnsureCoreWebView2Async(null);
+                var env = await CoreWebView2Environment.CreateAsync(
+                    userDataFolder: null,
+                    browserExecutableFolder: null,
+                    options: new CoreWebView2EnvironmentOptions
+                    {
+                        AdditionalBrowserArguments = "--enable-features=msWebView2EnableDraggableRegions"
+                    });
+
+                await WebView.EnsureCoreWebView2Async(env);
 
                 WebView.CoreWebView2.Settings.AreDevToolsEnabled = true;
                 WebView.CoreWebView2.Settings.AreDefaultContextMenusEnabled = true;
@@ -57,7 +62,6 @@ namespace Vekotin
 
                 // Bridges
                 WebView.CoreWebView2.AddHostObjectToScript("cpu", new CpuBridge());
-                WebView.CoreWebView2.AddHostObjectToScript("ram", new RamBridge());
 
                 string htmlPath = Path.Combine(widgetPath, "index.html");
                 if (File.Exists(htmlPath))
@@ -89,46 +93,6 @@ namespace Vekotin
         {
             string message = e.TryGetWebMessageAsString();
             System.Windows.MessageBox.Show($"Widget message: {message}", "Message from Widget");
-        }
-
-        private void Window_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
-        {
-            if (!isClickThrough)
-            {
-                this.DragMove();
-            }
-        }
-
-        private void ToggleClickThrough_Click(object sender, RoutedEventArgs e)
-        {
-            isClickThrough = !isClickThrough;
-
-            var hwnd = new WindowInteropHelper(this).Handle;
-            int exStyle = GetWindowLong(hwnd, GWL_EXSTYLE);
-
-            if (isClickThrough)
-            {
-                SetWindowLong(hwnd, GWL_EXSTYLE, exStyle | WS_EX_TRANSPARENT);
-                ClickThroughMenuItem.Header = "✓ Click-Through Enabled";
-            }
-            else
-            {
-                SetWindowLong(hwnd, GWL_EXSTYLE, exStyle & ~WS_EX_TRANSPARENT);
-                ClickThroughMenuItem.Header = "Enable Click-Through";
-            }
-        }
-
-        private void CloseWidget_Click(object sender, RoutedEventArgs e)
-        {
-            this.Close();
-        }
-
-        private void OpenDevTools_Click(object sender, RoutedEventArgs e)
-        {
-            if (WebView?.CoreWebView2 != null)
-            {
-                WebView.CoreWebView2.OpenDevToolsWindow();
-            }
         }
 
         protected override void OnSourceInitialized(EventArgs e)

@@ -9,31 +9,17 @@
         Title="WidgetWindow" 
         Height="450" 
         Width="800"
-        WindowStyle="None"
         AllowsTransparency="True"
-        Background="Transparent"
+        WindowStyle="None"
+        Background="#01000000"
         Topmost="True"
         ShowInTaskbar="False"
-        ResizeMode="NoResize"
-        MouseLeftButtonDown="Window_MouseLeftButtonDown">
+        ResizeMode="NoResize">
 
-    <Window.ContextMenu>
-        <ContextMenu>
-            <MenuItem x:Name="ClickThroughMenuItem" 
-                     Header="Enable Click-Through" 
-                     Click="ToggleClickThrough_Click"/>
-            <MenuItem Header="Open DevTools" 
-                     Click="OpenDevTools_Click"/>
-            <Separator/>
-            <MenuItem Header="Close Widget" 
-                     Click="CloseWidget_Click"/>
-        </ContextMenu>
-    </Window.ContextMenu>
-
-    <Border CornerRadius="8" 
-            Background="Transparent"
-            ClipToBounds="True">
+    <Border CornerRadius="8"
+                Background="Transparent"
+                ClipToBounds="True">
         <wv2:WebView2 x:Name="WebView" 
-                      DefaultBackgroundColor="Transparent"/>
+                          DefaultBackgroundColor="Transparent"/>
     </Border>
 </Window>

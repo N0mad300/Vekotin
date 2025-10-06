@@ -1,13 +1,8 @@
 ﻿
-using System;
-using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.IO;
-using System.Linq;
 using System.Text.Json;
 using System.Windows;
-using System.Windows.Forms;
-using System.Drawing;
 
 using MessageBox = System.Windows.MessageBox;
 
