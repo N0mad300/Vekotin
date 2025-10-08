@@ -16,9 +16,10 @@
         ShowInTaskbar="False"
         ResizeMode="NoResize">
 
-    <Border CornerRadius="8"
-                Background="Transparent"
-                ClipToBounds="True">
+    <Border x:Name="WidgetBorder"
+            CornerRadius="8"
+            Background="Transparent"
+            ClipToBounds="True">
         <wv2:WebView2 x:Name="WebView" 
                           DefaultBackgroundColor="Transparent"/>
     </Border>

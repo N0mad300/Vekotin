@@ -1,4 +1,5 @@
-﻿using System.IO;
+﻿using System.ComponentModel;
+using System.IO;
 using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Interop;
@@ -13,6 +14,7 @@ namespace Vekotin
     {
         private string widgetPath;
         private WidgetManifest manifest;
+        private CoreWebView2Environment _webViewEnvironment;
 
         [DllImport("user32.dll")]
         private static extern int SetWindowLong(IntPtr hWnd, int nIndex, int dwNewLong);
@@ -46,15 +48,18 @@ namespace Vekotin
         {
             try
             {
-                var env = await CoreWebView2Environment.CreateAsync(
-                    userDataFolder: null,
+                string userDataFolderPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),"Vekotin");
+                Directory.CreateDirectory(userDataFolderPath);
+
+                var _webViewEnvironment = await CoreWebView2Environment.CreateAsync(
+                    userDataFolder: userDataFolderPath,
                     browserExecutableFolder: null,
                     options: new CoreWebView2EnvironmentOptions
                     {
                         AdditionalBrowserArguments = "--enable-features=msWebView2EnableDraggableRegions"
                     });
 
-                await WebView.EnsureCoreWebView2Async(env);
+                await WebView.EnsureCoreWebView2Async(_webViewEnvironment);
 
                 WebView.CoreWebView2.Settings.AreDevToolsEnabled = true;
                 WebView.CoreWebView2.Settings.AreDefaultContextMenusEnabled = true;
@@ -102,6 +107,33 @@ namespace Vekotin
             var hwnd = new WindowInteropHelper(this).Handle;
             int exStyle = GetWindowLong(hwnd, GWL_EXSTYLE);
             SetWindowLong(hwnd, GWL_EXSTYLE, exStyle | WS_EX_TOOLWINDOW);
+        }
+
+        public async Task RemoveWebView()
+        {
+            if (WebView?.CoreWebView2 != null)
+            {
+                // Unsubscribe from all events first
+                WebView.CoreWebView2.WebMessageReceived -= WebView_WebMessageReceived;
+
+                // Clean browsing data
+                await WebView.CoreWebView2.Profile.ClearBrowsingDataAsync();
+
+                // Remove bridges
+                WebView.CoreWebView2.RemoveHostObjectFromScript("cpu");
+            }
+
+            WebView?.Dispose();
+
+            WidgetBorder.Child = null;
+            WebView = null;
+            _webViewEnvironment = null;
+        }
+
+        protected override async void OnClosing(CancelEventArgs e)
+        {
+            await RemoveWebView();
+            base.OnClosing(e);
         }
     }
 }
