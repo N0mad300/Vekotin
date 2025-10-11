@@ -8,11 +8,17 @@
     <UseWPF>true</UseWPF>
     <ProduceReferenceAssembly>True</ProduceReferenceAssembly>
     <UseWindowsForms>True</UseWindowsForms>
+    <ApplicationIcon>assets\vekotin.ico</ApplicationIcon>
   </PropertyGroup>
+
+  <ItemGroup>
+    <Content Include="assets\vekotin.ico" />
+  </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.3537.50" />
     <PackageReference Include="System.Management" Version="9.0.9" />
+    <PackageReference Include="WPF-UI" Version="4.0.3" />
   </ItemGroup>
 
 </Project>

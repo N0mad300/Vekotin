@@ -3,12 +3,13 @@ using System.Collections.ObjectModel;
 using System.IO;
 using System.Text.Json;
 using System.Windows;
+using Wpf.Ui.Controls;
 
 using MessageBox = System.Windows.MessageBox;
 
 namespace Vekotin
 {
-    public partial class ControlPanel : Window
+    public partial class ControlPanel : FluentWindow
     {
         private NotifyIcon trayIcon;
         private List<WidgetWindow> activeWidgets = new List<WidgetWindow>();
@@ -22,7 +23,6 @@ namespace Vekotin
             SetupTrayIcon();
             LoadAvailableWidgets();
         }
-
         
         private void SetupTrayIcon()
         {
@@ -101,7 +101,7 @@ namespace Vekotin
             else
             {
                 MessageBox.Show("Please select a widget to load.", "No Widget Selected",
-                    MessageBoxButton.OK, MessageBoxImage.Information);
+                    System.Windows.MessageBoxButton.OK, MessageBoxImage.Information);
             }
         }
 

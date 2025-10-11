@@ -16,6 +16,8 @@ namespace Vekotin
         private WidgetManifest manifest;
         private CoreWebView2Environment _webViewEnvironment;
 
+        private bool isWebViewCleanedUp = false;
+
         [DllImport("user32.dll")]
         private static extern int SetWindowLong(IntPtr hWnd, int nIndex, int dwNewLong);
 
@@ -116,23 +118,36 @@ namespace Vekotin
                 // Unsubscribe from all events first
                 WebView.CoreWebView2.WebMessageReceived -= WebView_WebMessageReceived;
 
-                // Clean browsing data
-                await WebView.CoreWebView2.Profile.ClearBrowsingDataAsync();
-
                 // Remove bridges
                 WebView.CoreWebView2.RemoveHostObjectFromScript("cpu");
+
+                // Clean browsing data
+                await WebView.CoreWebView2.Profile.ClearBrowsingDataAsync();
             }
+            _webViewEnvironment = null;
 
             WebView?.Dispose();
 
             WidgetBorder.Child = null;
             WebView = null;
-            _webViewEnvironment = null;
         }
 
         protected override async void OnClosing(CancelEventArgs e)
         {
-            await RemoveWebView();
+            if (!isWebViewCleanedUp)
+            {
+                // Cancel the close event
+                e.Cancel = true;
+
+                // Do cleanup asynchronously
+                await RemoveWebView();
+                isWebViewCleanedUp = true;
+
+                // Now actually close the window
+                Close();
+                return;
+            }
+
             base.OnClosing(e);
         }
     }
