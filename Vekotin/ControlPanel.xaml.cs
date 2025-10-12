@@ -1,11 +1,14 @@
 ﻿
 using System.Collections.ObjectModel;
+using System.Diagnostics;
 using System.IO;
 using System.Text.Json;
 using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
 using Wpf.Ui.Controls;
-
-using MessageBox = System.Windows.MessageBox;
+using static System.ComponentModel.Design.ObjectSelectorEditor;
+using static System.Windows.Forms.Design.AxImporter;
 
 namespace Vekotin
 {
@@ -14,13 +17,20 @@ namespace Vekotin
         private NotifyIcon trayIcon;
         private List<WidgetWindow> activeWidgets = new List<WidgetWindow>();
         public ObservableCollection<WidgetListItem> AvailableWidgets { get; set; }
-        static Config config = new Config();
+        private string appDataFolderPath;
+        private string configPath;
+        private Config config = new Config();
 
         public ControlPanel()
         {
             InitializeComponent();
+
             AvailableWidgets = new ObservableCollection<WidgetListItem>();
             DataContext = this;
+
+            appDataFolderPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Vekotin");
+            configPath = Path.Combine(appDataFolderPath, "vekotin.json");
+
             LoadConfig();
             WatchConfig();
             SetupTrayIcon();
@@ -29,9 +39,6 @@ namespace Vekotin
 
         private void LoadConfig()
         {
-            string appDataFolderPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Vekotin");
-            string configPath = Path.Combine(appDataFolderPath, "vekotin.json");
-
             if (!File.Exists(configPath))
             {
                 Directory.CreateDirectory(appDataFolderPath);
@@ -53,9 +60,6 @@ namespace Vekotin
 
         private void WatchConfig()
         {
-            string appDataFolderPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Vekotin");
-            string configPath = Path.Combine(appDataFolderPath, "vekotin.json");
-
             var watcher = new FileSystemWatcher(Path.GetDirectoryName(configPath) ?? appDataFolderPath, Path.GetFileName(configPath));
             watcher.NotifyFilter = NotifyFilters.LastWrite;
             watcher.Changed += (s, e) =>
@@ -103,7 +107,6 @@ namespace Vekotin
                 this.Activate();
             };
         }
-        
 
         private void LoadAvailableWidgets()
         {
@@ -138,29 +141,95 @@ namespace Vekotin
             }
         }
 
+        private void WidgetListBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            var listBox = sender as System.Windows.Controls.ListBox;
+            var selected = listBox?.SelectedItem as WidgetListItem;
+
+            if (selected != null)
+            {
+                OnWidgetSelected(selected);
+            }
+        }
+
+        private void OnWidgetSelected(WidgetListItem selected)
+        {
+            if (config.Widgets.TryGetValue(Path.GetFileName(selected.Path), out WidgetConfig? widgetConfig))
+            {
+                DraggableToggleSwitch.IsChecked = widgetConfig.Draggable;
+                ClickThroughToggleSwitch.IsChecked = widgetConfig.ClickThrough;
+                KeepOnScreenToggleSwitch.IsChecked = widgetConfig.KeepOnScreen;
+                SavePositionToggleSwitch.IsChecked = widgetConfig.SavePosition;
+                SnapToEdgesToggleSwitch.IsChecked = widgetConfig.SnapToEdges;
+            }
+            else
+            {
+                DraggableToggleSwitch.IsChecked = false;
+                ClickThroughToggleSwitch.IsChecked = false;
+                KeepOnScreenToggleSwitch.IsChecked = false;
+                SavePositionToggleSwitch.IsChecked = false;
+                SnapToEdgesToggleSwitch.IsChecked = false;
+            }
+        }
+
         private void LoadWidget_Click(object sender, RoutedEventArgs e)
         {
             var selected = WidgetListBox.SelectedItem as WidgetListItem;
             if (selected != null)
             {
-                var widget = new WidgetWindow(selected.Path, selected.Manifest);
+                if (!config.Widgets.ContainsKey(Path.GetFileName(selected.Path)))
+                {
+                    config.Widgets[Path.GetFileName(selected.Path)] = new WidgetConfig
+                    {
+                        Active = true,
+                        WindowX = 100,
+                        WindowY = 100,
+                        Draggable = DraggableToggleSwitch.IsChecked,
+                        ClickThrough = ClickThroughToggleSwitch.IsChecked,
+                        KeepOnScreen = KeepOnScreenToggleSwitch.IsChecked,
+                        SavePosition = SavePositionToggleSwitch.IsChecked,
+                        SnapToEdges = SnapToEdgesToggleSwitch.IsChecked
+                    };
+                }
+                else
+                {
+                    if (config.Widgets.TryGetValue($"{Path.GetFileName(selected.Path)}", out WidgetConfig? widgetConfig))
+                    {
+                        widgetConfig.Active = true;
+                        UpdateWidgetOptions(widgetConfig);
+                    }
+                }
+
+                // Update JSON config file
+                string jsonString = JsonSerializer.Serialize(config, new JsonSerializerOptions { WriteIndented = true });
+                File.WriteAllText(configPath, jsonString);
+
+                var widget = new WidgetWindow(selected.Path, selected.Manifest, config, configPath);
                 activeWidgets.Add(widget);
                 widget.Closed += (s, ev) => activeWidgets.Remove(widget);
                 widget.Show();
             }
-            else
+        }
+
+        private void Toggle_Checked(object sender, RoutedEventArgs e)
+        {
+            var selected = WidgetListBox.SelectedItem as WidgetListItem;
+            if (selected != null)
             {
-                MessageBox.Show("Please select a widget to load.", "No Widget Selected",
-                    System.Windows.MessageBoxButton.OK, MessageBoxImage.Information);
+                if (config.Widgets.TryGetValue($"{Path.GetFileName(selected.Path)}", out WidgetConfig? widgetConfig))
+                {
+                    UpdateWidgetOptions(widgetConfig);
+                }
             }
         }
 
-        private void CloseAllWidgets_Click(object sender, RoutedEventArgs e)
+        private void UpdateWidgetOptions(WidgetConfig widgetConfig)
         {
-            foreach (var widget in activeWidgets.ToList())
-            {
-                widget.Close();
-            }
+            widgetConfig.Draggable = DraggableToggleSwitch.IsChecked;
+            widgetConfig.ClickThrough = ClickThroughToggleSwitch.IsChecked;
+            widgetConfig.KeepOnScreen = KeepOnScreenToggleSwitch.IsChecked;
+            widgetConfig.SavePosition = SavePositionToggleSwitch.IsChecked;
+            widgetConfig.SnapToEdges = SnapToEdgesToggleSwitch.IsChecked;
         }
 
         private void RefreshWidgets_Click(object sender, RoutedEventArgs e)
@@ -176,7 +245,6 @@ namespace Vekotin
 
         protected override void OnClosed(EventArgs e)
         {
-            //trayIcon?.Dispose();
             foreach (var widget in activeWidgets.ToList())
             {
                 widget.Close();
@@ -203,8 +271,9 @@ namespace Vekotin
         public int WindowY { get; set; }
         public bool? Draggable { get; set; }
         public bool? ClickThrough { get; set; }
-        public bool? SnapEdges { get; set; }
-        public bool? AlwaysOnTop { get; set; }
+        public bool? KeepOnScreen { get; set; }
+        public bool? SavePosition { get; set; }
+        public bool? SnapToEdges { get; set; }
     }
 
     public class WidgetListItem

@@ -71,7 +71,8 @@
                         CornerRadius="4">
                     <Grid>
                         <ListBox x:Name="WidgetListBox"
-                                 ItemsSource="{Binding AvailableWidgets}">
+                                 ItemsSource="{Binding AvailableWidgets}"
+                                 SelectionChanged="WidgetListBox_SelectionChanged">
                             <ListBox.ItemTemplate>
                                 <DataTemplate>
                                     <StackPanel Margin="5">
@@ -179,24 +180,34 @@
                                           FontWeight="Bold"
                                           Margin="0,0,0,15"/>
                             <StackPanel Orientation="Horizontal">
-                                <ui:ToggleSwitch Margin="0, 0, 10, 0"></ui:ToggleSwitch>
-                                <ui:TextBlock Text="Draggable"></ui:TextBlock>
+                                <ui:ToggleSwitch x:Name="DraggableToggleSwitch" 
+                                                 Margin="0, 0, 10, 0"
+                                                 Checked="Toggle_Checked" Unchecked="Toggle_Checked"/>
+                                <ui:TextBlock Text="Draggable"/>
                             </StackPanel>
                             <StackPanel Orientation="Horizontal" Margin="0,15,0,0">
-                                <ui:ToggleSwitch Margin="0, 0, 10, 0"></ui:ToggleSwitch>
-                                <ui:TextBlock Text="Click through"></ui:TextBlock>
+                                <ui:ToggleSwitch x:Name="ClickThroughToggleSwitch" 
+                                                 Margin="0, 0, 10, 0"
+                                                 Checked="Toggle_Checked" Unchecked="Toggle_Checked"/>
+                                <ui:TextBlock Text="Click through"/>
                             </StackPanel>
                             <StackPanel Orientation="Horizontal" Margin="0,15,0,0">
-                                <ui:ToggleSwitch Margin="0, 0, 10, 0"></ui:ToggleSwitch>
-                                <ui:TextBlock Text="Keep on screen"></ui:TextBlock>
+                                <ui:ToggleSwitch x:Name="KeepOnScreenToggleSwitch" 
+                                                 Margin="0, 0, 10, 0"
+                                                 Checked="Toggle_Checked" Unchecked="Toggle_Checked"/>
+                                <ui:TextBlock Text="Keep on screen"/>
                             </StackPanel>
                             <StackPanel Orientation="Horizontal" Margin="0,15,0,0">
-                                <ui:ToggleSwitch Margin="0, 0, 10, 0"></ui:ToggleSwitch>
-                                <ui:TextBlock Text="Save position"></ui:TextBlock>
+                                <ui:ToggleSwitch x:Name="SavePositionToggleSwitch" 
+                                                 Margin="0, 0, 10, 0"
+                                                 Checked="Toggle_Checked" Unchecked="Toggle_Checked"/>
+                                <ui:TextBlock Text="Save position"/>
                             </StackPanel>
                             <StackPanel Orientation="Horizontal" Margin="0,15,0,0">
-                                <ui:ToggleSwitch Margin="0, 0, 10, 0"></ui:ToggleSwitch>
-                                <ui:TextBlock Text="Snap to edges"></ui:TextBlock>
+                                <ui:ToggleSwitch x:Name="SnapToEdgesToggleSwitch" 
+                                                 Margin="0, 0, 10, 0"
+                                                 Checked="Toggle_Checked" Unchecked="Toggle_Checked"/>
+                                <ui:TextBlock Text="Snap to edges"/>
                             </StackPanel>
                         </StackPanel>
                         

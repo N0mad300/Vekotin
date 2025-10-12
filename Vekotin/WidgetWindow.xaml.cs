@@ -1,20 +1,23 @@
 ﻿using System.ComponentModel;
+using System.Diagnostics;
 using System.IO;
 using System.Runtime.InteropServices;
+using System.Text.Json;
 using System.Windows;
 using System.Windows.Interop;
 
 using Microsoft.Web.WebView2.Core;
-
 using Vekotin.Bridges;
 
 namespace Vekotin
 {
     public partial class WidgetWindow : Window
     {
+        private Config config;
+        private string configPath;
         private string widgetPath;
         private WidgetManifest manifest;
-        private CoreWebView2Environment _webViewEnvironment;
+        private CoreWebView2Environment? _webViewEnvironment;
 
         private bool isWebViewCleanedUp = false;
 
@@ -27,10 +30,13 @@ namespace Vekotin
         private const int GWL_EXSTYLE = -20;
         private const int WS_EX_TOOLWINDOW = 0x80;
 
-        public WidgetWindow(string widgetPath, WidgetManifest manifest)
+        public WidgetWindow(string widgetPath, WidgetManifest manifest, Config config, string configPath)
         {
             this.widgetPath = widgetPath;
             this.manifest = manifest;
+            this.config = config;
+            this.configPath = configPath;
+
             InitializeComponent();
             InitializeWidget();
         }
@@ -40,8 +46,10 @@ namespace Vekotin
             this.Title = manifest.Name;
             this.Width = manifest.Width;
             this.Height = manifest.Height;
-            this.Left = 100;
-            this.Top = 100;
+
+            config.Widgets.TryGetValue(Path.GetFileName(widgetPath), out var widgetConfig);
+            this.Left = widgetConfig?.WindowX ?? 100;
+            this.Top = widgetConfig?.WindowY ?? 100;
 
             InitializeWebView();
         }
@@ -134,6 +142,20 @@ namespace Vekotin
 
         protected override async void OnClosing(CancelEventArgs e)
         {
+            if (config.Widgets.TryGetValue($"{Path.GetFileName(widgetPath)}", out WidgetConfig? widgetConfig))
+            {
+                widgetConfig.Active = false;
+                if (widgetConfig.SavePosition == true)
+                {
+                    widgetConfig.WindowY = Convert.ToInt32(this.Top);
+                    widgetConfig.WindowX = Convert.ToInt32(this.Left);
+                }
+            }
+
+            // Update JSON config file
+            string jsonString = JsonSerializer.Serialize(config, new JsonSerializerOptions { WriteIndented = true });
+            File.WriteAllText(configPath, jsonString);
+
             if (!isWebViewCleanedUp)
             {
                 // Cancel the close event
