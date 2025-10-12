@@ -14,14 +14,64 @@ namespace Vekotin
         private NotifyIcon trayIcon;
         private List<WidgetWindow> activeWidgets = new List<WidgetWindow>();
         public ObservableCollection<WidgetListItem> AvailableWidgets { get; set; }
+        static Config config = new Config();
 
         public ControlPanel()
         {
             InitializeComponent();
             AvailableWidgets = new ObservableCollection<WidgetListItem>();
             DataContext = this;
+            LoadConfig();
+            WatchConfig();
             SetupTrayIcon();
             LoadAvailableWidgets();
+        }
+
+        private void LoadConfig()
+        {
+            string appDataFolderPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Vekotin");
+            string configPath = Path.Combine(appDataFolderPath, "vekotin.json");
+
+            if (!File.Exists(configPath))
+            {
+                Directory.CreateDirectory(appDataFolderPath);
+
+                var config = new Config
+                {
+                    Vekotin = new VekotinConfig { WidgetPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Personal), "Vekotin", "Widgets") },
+                    Widgets = new Dictionary<string, WidgetConfig>()
+                };
+
+                string jsonString = JsonSerializer.Serialize(config, new JsonSerializerOptions { WriteIndented = true });
+
+                File.WriteAllText(configPath, jsonString);
+            }
+
+            var configJson = File.ReadAllText(configPath);
+            config = JsonSerializer.Deserialize<Config>(configJson);
+        }
+
+        private void WatchConfig()
+        {
+            string appDataFolderPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Vekotin");
+            string configPath = Path.Combine(appDataFolderPath, "vekotin.json");
+
+            var watcher = new FileSystemWatcher(Path.GetDirectoryName(configPath) ?? appDataFolderPath, Path.GetFileName(configPath));
+            watcher.NotifyFilter = NotifyFilters.LastWrite;
+            watcher.Changed += (s, e) =>
+            {
+                try
+                {
+                    // Delay slightly to avoid file lock issues
+                    Thread.Sleep(200);
+                    LoadConfig();
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Error reloading config: {ex.Message}");
+                }
+            };
+            watcher.EnableRaisingEvents = true;
         }
         
         private void SetupTrayIcon()
@@ -57,7 +107,7 @@ namespace Vekotin
 
         private void LoadAvailableWidgets()
         {
-            string widgetsPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "widgets");
+            string widgetsPath = config.Vekotin.WidgetPath ?? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Personal), "Vekotin", "Widgets");
             if (!Directory.Exists(widgetsPath))
             {
                 Directory.CreateDirectory(widgetsPath);
@@ -135,11 +185,33 @@ namespace Vekotin
         }
     }
 
+    public class Config
+    {
+        public VekotinConfig Vekotin { get; set; } = new();
+        public Dictionary<string, WidgetConfig> Widgets { get; set; } = new();
+    }
+
+    public class VekotinConfig
+    {
+        public string? WidgetPath { get; set; }
+    }
+
+    public class WidgetConfig
+    {
+        public bool Active { get; set; }
+        public int WindowX { get; set; }
+        public int WindowY { get; set; }
+        public bool? Draggable { get; set; }
+        public bool? ClickThrough { get; set; }
+        public bool? SnapEdges { get; set; }
+        public bool? AlwaysOnTop { get; set; }
+    }
+
     public class WidgetListItem
     {
         public string? Name { get; set; }
-        public required string Path { get; set; }
-        public required WidgetManifest Manifest { get; set; }
+        public string Path { get; set; }
+        public WidgetManifest Manifest { get; set; }
     }
 
     public class WidgetManifest
