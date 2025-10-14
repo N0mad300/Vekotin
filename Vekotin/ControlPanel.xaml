@@ -18,218 +18,238 @@
         <local:CountToVisibilityConverter x:Key="CountToVisibilityConverter"/>
     </ui:FluentWindow.Resources>
 
-    <Grid Margin="15, 15, 0, 0">
+    <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
-    
-        <!-- Header -->
-        <StackPanel Grid.Row="0" Margin="0,0,0,15">
-            <ui:TextBlock Text="Vekotin Control Panel" 
-                               FontSize="24" 
-                               FontWeight="Bold"/>
-            <ui:TextBlock Text="Manage your widgets" 
-                               FontSize="12" 
-                               Margin="0,5,0,0"/>
-        </StackPanel>
 
-        <Grid Grid.Row="1">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="0.3*"/>
-                <ColumnDefinition Width="0.7*"/>
-            </Grid.ColumnDefinitions>
-
-            <tray:NotifyIcon
+        <tray:NotifyIcon
                 x:Name="VekotinNotifyIcon"
                 TooltipText="Vekotin"
                 FocusOnLeftClick="True"
                 MenuOnRightClick="True">
-                <tray:NotifyIcon.Menu>
-                    <ContextMenu>
-                        <MenuItem Header="Show" Click="ShowMenuItem_Click"/>
-                        <MenuItem Header="Exit" Click="ExitMenuItem_Click"/>
-                    </ContextMenu>
-                </tray:NotifyIcon.Menu>
-            </tray:NotifyIcon>
+            <tray:NotifyIcon.Menu>
+                <ContextMenu>
+                    <MenuItem Header="Show" Click="ShowMenuItem_Click"/>
+                    <MenuItem Header="Exit" Click="ExitMenuItem_Click"/>
+                </ContextMenu>
+            </tray:NotifyIcon.Menu>
+        </tray:NotifyIcon>
 
-            <Grid Grid.Column="0">
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="*"/>
-                </Grid.RowDefinitions>
+        <ui:TitleBar
+            Grid.Row="0"
+            Title="Vekotin"
+            Background="#33000000"
+            ShowClose="True"
+            CanMaximize="True"
+            ShowMaximize="True"
+            ShowMinimize="True">
+            <ui:TitleBar.Icon>
+                <ui:ImageIcon Source="pack://application:,,,/assets/vekotin.ico"/>
+            </ui:TitleBar.Icon>
+        </ui:TitleBar>
 
-                <Grid Grid.Row="0" Margin="0,0,0,15">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="0.9*"/>
-                        <ColumnDefinition Width="0.1*"/>
-                    </Grid.ColumnDefinitions>
+        <Grid Grid.Row="1" Margin="15, 10, 0, 0">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
+            
+            <!-- Header -->
+            <StackPanel Grid.Row="0" Margin="0,0,0,15">
+                <ui:TextBlock Text="Vekotin Control Panel" 
+                                   FontSize="24" 
+                                   FontWeight="Bold"/>
+                <ui:TextBlock Text="Manage your widgets" 
+                                   FontSize="12" 
+                                   Margin="0,5,0,0"/>
+            </StackPanel>
 
-                    <!-- Widget Search TextBox -->
-                    <Border Grid.Column="0" 
-                            CornerRadius="4"
-                            Padding="0,0,15,0">
-                        <ui:TextBox x:Name="WidgetSearchBox" PlaceholderText="Search widget..."/>
+            <Grid Grid.Row="1">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="0.3*"/>
+                    <ColumnDefinition Width="0.7*"/>
+                </Grid.ColumnDefinitions>
+
+                <Grid Grid.Column="0">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+
+                    <Grid Grid.Row="0" Margin="0,0,0,15">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="0.9*"/>
+                            <ColumnDefinition Width="0.1*"/>
+                        </Grid.ColumnDefinitions>
+
+                        <!-- Widget Search TextBox -->
+                        <Border Grid.Column="0" 
+                                CornerRadius="4"
+                                Padding="0,0,15,0">
+                            <ui:TextBox x:Name="WidgetSearchBox" PlaceholderText="Search widget..."/>
+                        </Border>
+
+                        <!-- Refresh Widget List Button -->
+                        <ui:Button Grid.Column="1" 
+                                   Icon="{ui:SymbolIcon Symbol=ArrowSync20}" 
+                                   VerticalAlignment="Stretch"
+                                    Click="RefreshWidgets_Click">
+                        </ui:Button>
+                    </Grid>
+
+                    <!-- Widget List -->
+                    <Border Grid.Row="1" 
+                            CornerRadius="4">
+                        <Grid>
+                            <ListBox x:Name="WidgetListBox"
+                                     ItemsSource="{Binding AvailableWidgets}"
+                                     SelectionChanged="WidgetListBox_SelectionChanged">
+                                <ListBox.ItemTemplate>
+                                    <DataTemplate>
+                                        <StackPanel Margin="5">
+                                            <!-- Widget name -->
+                                            <ui:TextBlock Text="{Binding Name}" 
+                                                          FontWeight="SemiBold"
+                                                          FontSize="14"/>
+                                            <!-- Widget version -->
+                                            <ui:TextBlock Text="{Binding Manifest.Version, StringFormat='Version: {0}'}" 
+                                                          FontSize="11"
+                                                          Margin="0,2,0,0"/>
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </ListBox.ItemTemplate>
+                            </ListBox>
+
+                            <!-- Empty state -->
+                            <ui:TextBlock Text="No widgets found. Add widgets to the 'widgets' folder."
+                                      HorizontalAlignment="Center"
+                                      VerticalAlignment="Center"
+                                      Foreground="#999"
+                                      TextWrapping="Wrap"
+                                      TextAlignment="Center"
+                                      Margin="20"
+                                      Visibility="{Binding AvailableWidgets.Count, Converter={StaticResource CountToVisibilityConverter}}"/>
+                        </Grid>
                     </Border>
-
-                    <!-- Refresh Widget List Button -->
-                    <ui:Button Grid.Column="1" 
-                               Icon="{ui:SymbolIcon Symbol=ArrowSync20}" 
-                               VerticalAlignment="Stretch"
-                                Click="RefreshWidgets_Click">
-                    </ui:Button>
                 </Grid>
 
-                <!-- Widget List -->
-                <Border Grid.Row="1" 
-                        CornerRadius="4">
-                    <Grid>
-                        <ListBox x:Name="WidgetListBox"
-                                 ItemsSource="{Binding AvailableWidgets}"
-                                 SelectionChanged="WidgetListBox_SelectionChanged">
-                            <ListBox.ItemTemplate>
-                                <DataTemplate>
-                                    <StackPanel Margin="5">
-                                        <!-- Widget name -->
-                                        <ui:TextBlock Text="{Binding Name}" 
-                                                      FontWeight="SemiBold"
-                                                      FontSize="14"/>
-                                        <!-- Widget version -->
-                                        <ui:TextBlock Text="{Binding Manifest.Version, StringFormat='Version: {0}'}" 
-                                                      FontSize="11"
-                                                      Margin="0,2,0,0"/>
-                                    </StackPanel>
-                                </DataTemplate>
-                            </ListBox.ItemTemplate>
-                        </ListBox>
+                <!-- Selected widget controls and informations -->
+                <ui:CardControl Grid.Column="1"
+                         Margin="15, 0, 0, 0"
+                         VerticalContentAlignment="Top"
+                         HorizontalContentAlignment="Left"
+                         VerticalAlignment="Stretch"
+                         HorizontalAlignment="Stretch">
 
-                        <!-- Empty state -->
-                        <ui:TextBlock Text="No widgets found. Add widgets to the 'widgets' folder."
-                                  HorizontalAlignment="Center"
-                                  VerticalAlignment="Center"
-                                  Foreground="#999"
-                                  TextWrapping="Wrap"
-                                  TextAlignment="Center"
-                                  Margin="20"
-                                  Visibility="{Binding AvailableWidgets.Count, Converter={StaticResource CountToVisibilityConverter}}"/>
-                    </Grid>
-                </Border>
-            </Grid>
-
-            <!-- Selected widget controls and informations -->
-            <ui:CardControl Grid.Column="1"
-                     Margin="15, 0, 0, 0"
-                     VerticalContentAlignment="Top"
-                     HorizontalContentAlignment="Left"
-                     VerticalAlignment="Stretch"
-                     HorizontalAlignment="Stretch">
-
-                <Grid Width="{Binding ActualWidth, RelativeSource={RelativeSource AncestorType={x:Type ui:CardControl}}}">
-                    <Grid.Style>
-                        <Style TargetType="Grid">
-                            <Setter Property="Visibility" Value="Visible"/>
-                            <Style.Triggers>
-                                <DataTrigger Binding="{Binding SelectedItem, ElementName=WidgetListBox}" Value="{x:Null}">
-                                    <Setter Property="Visibility" Value="Collapsed"/>
-                                </DataTrigger>
-                            </Style.Triggers>
-                        </Style>
-                    </Grid.Style>
+                    <Grid Width="{Binding ActualWidth, RelativeSource={RelativeSource AncestorType={x:Type ui:CardControl}}}">
+                        <Grid.Style>
+                            <Style TargetType="Grid">
+                                <Setter Property="Visibility" Value="Visible"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding SelectedItem, ElementName=WidgetListBox}" Value="{x:Null}">
+                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Grid.Style>
                     
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="*"/>
-                    </Grid.ColumnDefinitions>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
 
-                    <Grid Grid.Column="0">
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="Auto"/>
-                            <RowDefinition Height="Auto"/>
-                            <RowDefinition Height="Auto"/>
-                            <RowDefinition Height="Auto"/>
-                            <RowDefinition Height="Auto"/>
-                        </Grid.RowDefinitions>
+                        <Grid Grid.Column="0">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
 
-                        <TextBlock Grid.Row="0" 
-                                   Text="{Binding SelectedItem.Name, ElementName=WidgetListBox}"
-                                   FontSize="24"
-                                   FontWeight="Bold"
-                                   Margin="0,0,0,10"/>
-                        <TextBlock Grid.Row="1"
-                                   Text="{Binding SelectedItem.Manifest.Description, ElementName=WidgetListBox, StringFormat='Description: {0}'}"/>
-                        <TextBlock Grid.Row="2"
-                                   Text="{Binding SelectedItem.Manifest.Author, ElementName=WidgetListBox, StringFormat='Author: {0}'}"
-                                   Margin="0,5,0,0"/>
-                        <TextBlock Grid.Row="3"
-                                   Text="{Binding SelectedItem.Manifest.Version, ElementName=WidgetListBox, StringFormat='Version: {0}'}"
-                                   Margin="0,5,0,0"/>
-                        <TextBlock Grid.Row="4"
-                                   Text="{Binding SelectedItem.Manifest.License, ElementName=WidgetListBox, StringFormat='License: {0}'}"
-                                   Margin="0,5,0,0"/>
-                    </Grid>
+                            <TextBlock Grid.Row="0" 
+                                       Text="{Binding SelectedItem.Name, ElementName=WidgetListBox}"
+                                       FontSize="24"
+                                       FontWeight="Bold"
+                                       Margin="0,0,0,10"/>
+                            <TextBlock Grid.Row="1"
+                                       Text="{Binding SelectedItem.Manifest.Description, ElementName=WidgetListBox, StringFormat='Description: {0}'}"/>
+                            <TextBlock Grid.Row="2"
+                                       Text="{Binding SelectedItem.Manifest.Author, ElementName=WidgetListBox, StringFormat='Author: {0}'}"
+                                       Margin="0,5,0,0"/>
+                            <TextBlock Grid.Row="3"
+                                       Text="{Binding SelectedItem.Manifest.Version, ElementName=WidgetListBox, StringFormat='Version: {0}'}"
+                                       Margin="0,5,0,0"/>
+                            <TextBlock Grid.Row="4"
+                                       Text="{Binding SelectedItem.Manifest.License, ElementName=WidgetListBox, StringFormat='License: {0}'}"
+                                       Margin="0,5,0,0"/>
+                        </Grid>
 
-                    <Grid Grid.Column="1">
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="Auto"/>
-                            <RowDefinition Height="Auto"/>
-                        </Grid.RowDefinitions>
+                        <Grid Grid.Column="1">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto"/>
+                                <RowDefinition Height="Auto"/>
+                            </Grid.RowDefinitions>
 
-                        <!-- Widget buttons -->
-                        <StackPanel Grid.Row="0" Orientation="Horizontal">
-                            <ui:Button Content="Load Widget" 
-                            Appearance="Primary"
-                            Click="LoadWidget_Click"
-                            MinWidth="100"
-                            Margin="0,0,10,0"/>
-                            <ui:Button Content="Open Dev Tools"
-                            Appearance="Primary"
-                            MinWidth="100"
-                            Margin="0,0,10,0"/>
-                        </StackPanel>
+                            <!-- Widget buttons -->
+                            <StackPanel Grid.Row="0" Orientation="Horizontal">
+                                <ui:Button Content="Load Widget" 
+                                Appearance="Primary"
+                                Click="LoadWidget_Click"
+                                MinWidth="100"
+                                Margin="0,0,10,0"/>
+                                <ui:Button Content="Open Dev Tools"
+                                Appearance="Primary"
+                                MinWidth="100"
+                                Margin="0,0,10,0"/>
+                            </StackPanel>
 
-                        <!-- Widget options -->
-                        <StackPanel Grid.Row="1" Orientation="Vertical" Margin="0, 15, 0, 0">
-                            <ui:TextBlock Text="Options"
-                                          FontSize="18"
-                                          FontWeight="Bold"
-                                          Margin="0,0,0,15"/>
-                            <StackPanel Orientation="Horizontal">
-                                <ui:ToggleSwitch x:Name="DraggableToggleSwitch" 
-                                                 Margin="0, 0, 10, 0"
-                                                 Checked="Toggle_Checked" Unchecked="Toggle_Checked"/>
-                                <ui:TextBlock Text="Draggable"/>
+                            <!-- Widget options -->
+                            <StackPanel Grid.Row="1" Orientation="Vertical" Margin="0, 15, 0, 0">
+                                <ui:TextBlock Text="Options"
+                                              FontSize="18"
+                                              FontWeight="Bold"
+                                              Margin="0,0,0,15"/>
+                                <StackPanel Orientation="Horizontal">
+                                    <ui:ToggleSwitch x:Name="DraggableToggleSwitch" 
+                                                     Margin="0, 0, 10, 0"
+                                                     Checked="Toggle_Checked" Unchecked="Toggle_Checked"/>
+                                    <ui:TextBlock Text="Draggable"/>
+                                </StackPanel>
+                                <StackPanel Orientation="Horizontal" Margin="0,15,0,0">
+                                    <ui:ToggleSwitch x:Name="ClickThroughToggleSwitch" 
+                                                     Margin="0, 0, 10, 0"
+                                                     Checked="Toggle_Checked" Unchecked="Toggle_Checked"/>
+                                    <ui:TextBlock Text="Click through"/>
+                                </StackPanel>
+                                <StackPanel Orientation="Horizontal" Margin="0,15,0,0">
+                                    <ui:ToggleSwitch x:Name="KeepOnScreenToggleSwitch" 
+                                                     Margin="0, 0, 10, 0"
+                                                     Checked="Toggle_Checked" Unchecked="Toggle_Checked"/>
+                                    <ui:TextBlock Text="Keep on screen"/>
+                                </StackPanel>
+                                <StackPanel Orientation="Horizontal" Margin="0,15,0,0">
+                                    <ui:ToggleSwitch x:Name="SavePositionToggleSwitch" 
+                                                     Margin="0, 0, 10, 0"
+                                                     Checked="Toggle_Checked" Unchecked="Toggle_Checked"/>
+                                    <ui:TextBlock Text="Save position"/>
+                                </StackPanel>
+                                <StackPanel Orientation="Horizontal" Margin="0,15,0,0">
+                                    <ui:ToggleSwitch x:Name="SnapToEdgesToggleSwitch" 
+                                                     Margin="0, 0, 10, 0"
+                                                     Checked="Toggle_Checked" Unchecked="Toggle_Checked"/>
+                                    <ui:TextBlock Text="Snap to edges"/>
+                                </StackPanel>
                             </StackPanel>
-                            <StackPanel Orientation="Horizontal" Margin="0,15,0,0">
-                                <ui:ToggleSwitch x:Name="ClickThroughToggleSwitch" 
-                                                 Margin="0, 0, 10, 0"
-                                                 Checked="Toggle_Checked" Unchecked="Toggle_Checked"/>
-                                <ui:TextBlock Text="Click through"/>
-                            </StackPanel>
-                            <StackPanel Orientation="Horizontal" Margin="0,15,0,0">
-                                <ui:ToggleSwitch x:Name="KeepOnScreenToggleSwitch" 
-                                                 Margin="0, 0, 10, 0"
-                                                 Checked="Toggle_Checked" Unchecked="Toggle_Checked"/>
-                                <ui:TextBlock Text="Keep on screen"/>
-                            </StackPanel>
-                            <StackPanel Orientation="Horizontal" Margin="0,15,0,0">
-                                <ui:ToggleSwitch x:Name="SavePositionToggleSwitch" 
-                                                 Margin="0, 0, 10, 0"
-                                                 Checked="Toggle_Checked" Unchecked="Toggle_Checked"/>
-                                <ui:TextBlock Text="Save position"/>
-                            </StackPanel>
-                            <StackPanel Orientation="Horizontal" Margin="0,15,0,0">
-                                <ui:ToggleSwitch x:Name="SnapToEdgesToggleSwitch" 
-                                                 Margin="0, 0, 10, 0"
-                                                 Checked="Toggle_Checked" Unchecked="Toggle_Checked"/>
-                                <ui:TextBlock Text="Snap to edges"/>
-                            </StackPanel>
-                        </StackPanel>
                         
-                    </Grid>
+                        </Grid>
                     
-                </Grid>
+                    </Grid>
                 
-            </ui:CardControl>
+                </ui:CardControl>
+            </Grid>
         </Grid>
     </Grid>
    

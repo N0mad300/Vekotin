@@ -107,7 +107,7 @@ namespace Vekotin
 
         private void WidgetListBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
-            var listBox = sender as System.Windows.Controls.ListBox;
+            var listBox = sender as ListBox;
             var selected = listBox?.SelectedItem as WidgetListItem;
 
             if (selected != null)
@@ -210,7 +210,7 @@ namespace Vekotin
 
         private void ExitMenuItem_Click(object sender, RoutedEventArgs e)
         {
-            System.Windows.Application.Current.Shutdown();
+            Application.Current.Shutdown();
         }
 
         protected override void OnClosing(System.ComponentModel.CancelEventArgs e)
