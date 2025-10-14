@@ -1,20 +1,15 @@
 ﻿
 using System.Collections.ObjectModel;
-using System.Diagnostics;
 using System.IO;
 using System.Text.Json;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Controls.Primitives;
 using Wpf.Ui.Controls;
-using static System.ComponentModel.Design.ObjectSelectorEditor;
-using static System.Windows.Forms.Design.AxImporter;
 
 namespace Vekotin
 {
     public partial class ControlPanel : FluentWindow
     {
-        private NotifyIcon trayIcon;
         private List<WidgetWindow> activeWidgets = new List<WidgetWindow>();
         public ObservableCollection<WidgetListItem> AvailableWidgets { get; set; }
         private string appDataFolderPath;
@@ -33,7 +28,6 @@ namespace Vekotin
 
             LoadConfig();
             WatchConfig();
-            SetupTrayIcon();
             LoadAvailableWidgets();
         }
 
@@ -76,36 +70,6 @@ namespace Vekotin
                 }
             };
             watcher.EnableRaisingEvents = true;
-        }
-        
-        private void SetupTrayIcon()
-        {
-            trayIcon = new NotifyIcon
-            {
-                Icon = SystemIcons.Application,
-                Visible = true,
-                Text = "Widget System"
-            };
-
-            var contextMenu = new ContextMenuStrip();
-            contextMenu.Items.Add("Show Control Panel", null, (s, e) =>
-            {
-                this.Show();
-                this.WindowState = WindowState.Normal;
-                this.Activate();
-            });
-            contextMenu.Items.Add("Exit", null, (s, e) =>
-            {
-                System.Windows.Application.Current.Shutdown();
-            });
-
-            trayIcon.ContextMenuStrip = contextMenu;
-            trayIcon.DoubleClick += (s, e) =>
-            {
-                this.Show();
-                this.WindowState = WindowState.Normal;
-                this.Activate();
-            };
         }
 
         private void LoadAvailableWidgets()
@@ -235,6 +199,18 @@ namespace Vekotin
         private void RefreshWidgets_Click(object sender, RoutedEventArgs e)
         {
             LoadAvailableWidgets();
+        }
+
+        private void ShowMenuItem_Click(object sender, RoutedEventArgs e)
+        {
+            this.Show();
+            this.WindowState = WindowState.Normal;
+            this.Activate();
+        }
+
+        private void ExitMenuItem_Click(object sender, RoutedEventArgs e)
+        {
+            System.Windows.Application.Current.Shutdown();
         }
 
         protected override void OnClosing(System.ComponentModel.CancelEventArgs e)

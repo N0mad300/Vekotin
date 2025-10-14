@@ -4,6 +4,7 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+        xmlns:tray="http://schemas.lepo.co/wpfui/2022/xaml/tray"
         xmlns:local="clr-namespace:Vekotin"
         mc:Ignorable="d"
         Title="Vekotin" 
@@ -12,7 +13,7 @@
         WindowStartupLocation="CenterScreen"
         ExtendsContentIntoTitleBar="True"
         WindowBackdropType="Mica">
-    
+
     <ui:FluentWindow.Resources>
         <local:CountToVisibilityConverter x:Key="CountToVisibilityConverter"/>
     </ui:FluentWindow.Resources>
@@ -38,6 +39,19 @@
                 <ColumnDefinition Width="0.3*"/>
                 <ColumnDefinition Width="0.7*"/>
             </Grid.ColumnDefinitions>
+
+            <tray:NotifyIcon
+                x:Name="VekotinNotifyIcon"
+                TooltipText="Vekotin"
+                FocusOnLeftClick="True"
+                MenuOnRightClick="True">
+                <tray:NotifyIcon.Menu>
+                    <ContextMenu>
+                        <MenuItem Header="Show" Click="ShowMenuItem_Click"/>
+                        <MenuItem Header="Exit" Click="ExitMenuItem_Click"/>
+                    </ContextMenu>
+                </tray:NotifyIcon.Menu>
+            </tray:NotifyIcon>
 
             <Grid Grid.Column="0">
                 <Grid.RowDefinitions>
