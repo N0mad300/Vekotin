@@ -1,4 +1,5 @@
 ﻿using System.ComponentModel;
+using System.Diagnostics;
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Text.Json;
@@ -14,11 +15,12 @@ namespace Vekotin
     {
         private Config config;
         private string configPath;
-        private string widgetPath;
+        public string widgetPath;
         private WidgetManifest manifest;
         private CoreWebView2Environment? _webViewEnvironment;
 
         private bool isWebViewCleanedUp = false;
+        public bool isDevToolsOpen = false;
 
         [DllImport("user32.dll")]
         private static extern int SetWindowLong(IntPtr hWnd, int nIndex, int dwNewLong);
@@ -26,6 +28,14 @@ namespace Vekotin
         [DllImport("user32.dll")]
         private static extern int GetWindowLong(IntPtr hWnd, int nIndex);
 
+        [DllImport("user32.dll")]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        static extern bool SetForegroundWindow(IntPtr hWnd);
+
+        [DllImport("user32.dll", SetLastError = true)]
+        static extern bool PostMessage(IntPtr hWnd, uint Msg, IntPtr wParam, IntPtr lParam);
+
+        private const uint WM_CLOSE = 0x0010;
         private const int GWL_EXSTYLE = -20;
         private const int WS_EX_TOOLWINDOW = 0x80;
 
@@ -94,7 +104,7 @@ namespace Vekotin
             }
             catch (Exception ex)
             {
-                System.Windows.MessageBox.Show(
+                MessageBox.Show(
                     $"Error initializing WebView2: {ex.Message}\n\nMake sure WebView2 Runtime is installed.",
                     "Error",
                     MessageBoxButton.OK,
@@ -106,7 +116,66 @@ namespace Vekotin
         private void WebView_WebMessageReceived(object sender, CoreWebView2WebMessageReceivedEventArgs e)
         {
             string message = e.TryGetWebMessageAsString();
-            System.Windows.MessageBox.Show($"Widget message: {message}", "Message from Widget");
+            MessageBox.Show($"Widget message: {message}", "Message from Widget");
+        }
+
+        public void ToggleDevTools()
+        {
+            if (WebView != null && WebView.CoreWebView2 != null)
+            {
+                if (!isDevToolsOpen)
+                {
+                    WebView.CoreWebView2.OpenDevToolsWindow();
+                    isDevToolsOpen = true;
+                }
+            }
+        }
+
+        private void CloseDevToolsWindow()
+        {
+            Process? devToolsProcess = GetDevToolsProcess();
+
+            if (devToolsProcess != null)
+            {
+                try
+                {
+                    // Get the handle
+                    IntPtr handle = devToolsProcess.MainWindowHandle;
+
+                    if (handle != IntPtr.Zero)
+                    {
+                        // Bring the window to the foreground and send a close message
+                        SetForegroundWindow(handle);
+                        PostMessage(handle, WM_CLOSE, IntPtr.Zero, IntPtr.Zero);
+                    }
+
+                    isDevToolsOpen = false;
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show($"Error closing DevTools window: {ex.Message}");
+                }
+            }
+        }
+
+        private Process? GetDevToolsProcess()
+        {
+            // Get the source URL from your WebView2 control
+            string? webViewUrl = WebView?.Source?.ToString();
+            if (string.IsNullOrEmpty(webViewUrl))
+            {
+                return null;
+            }
+
+            string urlPart = new Uri(webViewUrl).Host;
+
+            // Find the DevTools process by its window title
+            Process? devToolsProcess = Process.GetProcesses()
+                .FirstOrDefault(p => !string.IsNullOrEmpty(p.MainWindowTitle) &&
+                                     p.MainWindowTitle.Contains("DevTools") &&
+                                     p.MainWindowTitle.Contains(urlPart));
+
+            return devToolsProcess;
         }
 
         protected override void OnSourceInitialized(EventArgs e)
@@ -159,6 +228,11 @@ namespace Vekotin
             {
                 // Cancel the close event
                 e.Cancel = true;
+
+                if (isDevToolsOpen == true)
+                {
+                    CloseDevToolsWindow();
+                }
 
                 // Do cleanup asynchronously
                 await RemoveWebView();

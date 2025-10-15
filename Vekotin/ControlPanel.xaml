@@ -195,13 +195,16 @@
 
                             <!-- Widget buttons -->
                             <StackPanel Grid.Row="0" Orientation="Horizontal">
-                                <ui:Button Content="Load Widget" 
+                                <ui:Button x:Name="WidgetLoadButton"
+                                Content="Load Widget" 
                                 Appearance="Primary"
                                 Click="LoadWidget_Click"
                                 MinWidth="100"
                                 Margin="0,0,10,0"/>
-                                <ui:Button Content="Open Dev Tools"
+                                <ui:Button x:Name="WidgetDevToolsButton" 
+                                Content="Open Dev Tools"
                                 Appearance="Primary"
+                                Click="OpenDevTools_Click"
                                 MinWidth="100"
                                 Margin="0,0,10,0"/>
                             </StackPanel>

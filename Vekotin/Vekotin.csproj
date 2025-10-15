@@ -12,11 +12,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <None Remove="assets\vekotin.png" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Resource Include="assets\vekotin.ico" />
+    <Resource Include="Assets\vekotin.ico" />
   </ItemGroup>
 
   <ItemGroup>

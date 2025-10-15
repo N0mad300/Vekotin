@@ -175,6 +175,19 @@ namespace Vekotin
             }
         }
 
+        private void OpenDevTools_Click(object sender, RoutedEventArgs e)
+        {
+            var selected = WidgetListBox.SelectedItem as WidgetListItem;
+            if (selected != null)
+            {
+                WidgetWindow? widgetWindow = FindWidgetWindow(selected.Path);
+                if (widgetWindow != null)
+                {
+                    widgetWindow.ToggleDevTools();
+                }
+            }
+        }
+
         private void Toggle_Checked(object sender, RoutedEventArgs e)
         {
             var selected = WidgetListBox.SelectedItem as WidgetListItem;
@@ -211,6 +224,18 @@ namespace Vekotin
         private void ExitMenuItem_Click(object sender, RoutedEventArgs e)
         {
             Application.Current.Shutdown();
+        }
+
+        private WidgetWindow? FindWidgetWindow(string path)
+        {
+            foreach (WidgetWindow widgetWindow in activeWidgets)
+            {
+                if (widgetWindow.widgetPath == path)
+                {
+                    return widgetWindow;
+                }
+            }
+            return null;
         }
 
         protected override void OnClosing(System.ComponentModel.CancelEventArgs e)
