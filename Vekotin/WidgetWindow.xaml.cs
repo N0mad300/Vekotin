@@ -20,7 +20,7 @@ namespace Vekotin
         private CoreWebView2Environment? _webViewEnvironment;
 
         private bool isWebViewCleanedUp = false;
-        public bool isDevToolsOpen = false;
+        private bool isDevToolsOpen = false;
 
         [DllImport("user32.dll")]
         private static extern int SetWindowLong(IntPtr hWnd, int nIndex, int dwNewLong);
@@ -119,7 +119,7 @@ namespace Vekotin
             MessageBox.Show($"Widget message: {message}", "Message from Widget");
         }
 
-        public void ToggleDevTools()
+        public void OpenDevTools()
         {
             if (WebView != null && WebView.CoreWebView2 != null)
             {
@@ -131,7 +131,7 @@ namespace Vekotin
             }
         }
 
-        private void CloseDevToolsWindow()
+        private void CloseDevTools()
         {
             Process? devToolsProcess = GetDevToolsProcess();
 
@@ -231,7 +231,7 @@ namespace Vekotin
 
                 if (isDevToolsOpen == true)
                 {
-                    CloseDevToolsWindow();
+                    CloseDevTools();
                 }
 
                 // Do cleanup asynchronously

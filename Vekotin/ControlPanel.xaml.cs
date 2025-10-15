@@ -4,6 +4,7 @@ using System.IO;
 using System.Text.Json;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Media;
 using Wpf.Ui.Controls;
 
 namespace Vekotin
@@ -134,9 +135,28 @@ namespace Vekotin
                 SavePositionToggleSwitch.IsChecked = false;
                 SnapToEdgesToggleSwitch.IsChecked = false;
             }
+
+            if (widgetConfig != null)
+            {
+                if (widgetConfig.Active == true)
+                {
+                    WidgetOpenButton.Background = (Brush)new BrushConverter().ConvertFromString("#DC3545");
+                    WidgetOpenButton.Content = "Close Widget";
+                }
+                else
+                {
+                    WidgetOpenButton.ClearValue(BackgroundProperty);
+                    WidgetOpenButton.Content = "Load Widget";
+                }
+            }
+            else
+            {
+                WidgetOpenButton.ClearValue(BackgroundProperty);
+                WidgetOpenButton.Content = "Load Widget";
+            }
         }
 
-        private void LoadWidget_Click(object sender, RoutedEventArgs e)
+        private void OpenWidget_Click(object sender, RoutedEventArgs e)
         {
             var selected = WidgetListBox.SelectedItem as WidgetListItem;
             if (selected != null)
@@ -171,8 +191,19 @@ namespace Vekotin
                 var widget = new WidgetWindow(selected.Path, selected.Manifest, config, configPath);
                 activeWidgets.Add(widget);
                 widget.Closed += (s, ev) => activeWidgets.Remove(widget);
+                widget.Closed += OnWidgetClosed;
                 widget.Show();
+
+                // Update "Load Widget" button style
+                WidgetOpenButton.Background = (Brush)new BrushConverter().ConvertFromString("#DC3545");
+                WidgetOpenButton.Content = "Close Widget";
             }
+        }
+
+        private void OnWidgetClosed(object sender, EventArgs e)
+        {
+            WidgetOpenButton.ClearValue(BackgroundProperty);
+            WidgetOpenButton.Content = "Load Widget";
         }
 
         private void OpenDevTools_Click(object sender, RoutedEventArgs e)
@@ -183,7 +214,7 @@ namespace Vekotin
                 WidgetWindow? widgetWindow = FindWidgetWindow(selected.Path);
                 if (widgetWindow != null)
                 {
-                    widgetWindow.ToggleDevTools();
+                    widgetWindow.OpenDevTools();
                 }
             }
         }
