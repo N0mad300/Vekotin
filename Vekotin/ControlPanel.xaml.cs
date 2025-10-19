@@ -161,42 +161,50 @@ namespace Vekotin
             var selected = WidgetListBox.SelectedItem as WidgetListItem;
             if (selected != null)
             {
-                if (!config.Widgets.ContainsKey(Path.GetFileName(selected.Path)))
+                WidgetWindow? widgetWindow = FindWidgetWindow(selected.Path);
+                if (widgetWindow == null)
                 {
-                    config.Widgets[Path.GetFileName(selected.Path)] = new WidgetConfig
+                    if (!config.Widgets.ContainsKey(Path.GetFileName(selected.Path)))
                     {
-                        Active = true,
-                        WindowX = 100,
-                        WindowY = 100,
-                        Draggable = DraggableToggleSwitch.IsChecked,
-                        ClickThrough = ClickThroughToggleSwitch.IsChecked,
-                        KeepOnScreen = KeepOnScreenToggleSwitch.IsChecked,
-                        SavePosition = SavePositionToggleSwitch.IsChecked,
-                        SnapToEdges = SnapToEdgesToggleSwitch.IsChecked
-                    };
+                        config.Widgets[Path.GetFileName(selected.Path)] = new WidgetConfig
+                        {
+                            Active = true,
+                            WindowX = 100,
+                            WindowY = 100,
+                            Draggable = DraggableToggleSwitch.IsChecked,
+                            ClickThrough = ClickThroughToggleSwitch.IsChecked,
+                            KeepOnScreen = KeepOnScreenToggleSwitch.IsChecked,
+                            SavePosition = SavePositionToggleSwitch.IsChecked,
+                            SnapToEdges = SnapToEdgesToggleSwitch.IsChecked
+                        };
+                    }
+                    else
+                    {
+                        if (config.Widgets.TryGetValue($"{Path.GetFileName(selected.Path)}", out WidgetConfig? widgetConfig))
+                        {
+                            widgetConfig.Active = true;
+                            UpdateWidgetOptions(widgetConfig);
+                        }
+                    }
+
+                    // Update JSON config file
+                    string jsonString = JsonSerializer.Serialize(config, new JsonSerializerOptions { WriteIndented = true });
+                    File.WriteAllText(configPath, jsonString);
+
+                    var widget = new WidgetWindow(selected.Path, selected.Manifest, config, configPath);
+                    activeWidgets.Add(widget);
+                    widget.Closed += (s, ev) => activeWidgets.Remove(widget);
+                    widget.Closed += OnWidgetClosed;
+                    widget.Show();
+
+                    // Update "Load Widget" button style
+                    WidgetOpenButton.Background = (Brush)new BrushConverter().ConvertFromString("#DC3545");
+                    WidgetOpenButton.Content = "Close Widget";
                 }
                 else
                 {
-                    if (config.Widgets.TryGetValue($"{Path.GetFileName(selected.Path)}", out WidgetConfig? widgetConfig))
-                    {
-                        widgetConfig.Active = true;
-                        UpdateWidgetOptions(widgetConfig);
-                    }
+                    widgetWindow.Close();
                 }
-
-                // Update JSON config file
-                string jsonString = JsonSerializer.Serialize(config, new JsonSerializerOptions { WriteIndented = true });
-                File.WriteAllText(configPath, jsonString);
-
-                var widget = new WidgetWindow(selected.Path, selected.Manifest, config, configPath);
-                activeWidgets.Add(widget);
-                widget.Closed += (s, ev) => activeWidgets.Remove(widget);
-                widget.Closed += OnWidgetClosed;
-                widget.Show();
-
-                // Update "Load Widget" button style
-                WidgetOpenButton.Background = (Brush)new BrushConverter().ConvertFromString("#DC3545");
-                WidgetOpenButton.Content = "Close Widget";
             }
         }
 
