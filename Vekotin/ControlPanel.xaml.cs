@@ -16,6 +16,7 @@ namespace Vekotin
         private string appDataFolderPath;
         private string configPath;
         private Config config = new Config();
+        private FileSystemWatcher? configWatcher;
 
         public ControlPanel()
         {
@@ -44,9 +45,7 @@ namespace Vekotin
                     Widgets = new Dictionary<string, WidgetConfig>()
                 };
 
-                string jsonString = JsonSerializer.Serialize(config, new JsonSerializerOptions { WriteIndented = true });
-
-                File.WriteAllText(configPath, jsonString);
+                SaveConfig();
             }
 
             var configJson = File.ReadAllText(configPath);
@@ -55,9 +54,9 @@ namespace Vekotin
 
         private void WatchConfig()
         {
-            var watcher = new FileSystemWatcher(Path.GetDirectoryName(configPath) ?? appDataFolderPath, Path.GetFileName(configPath));
-            watcher.NotifyFilter = NotifyFilters.LastWrite;
-            watcher.Changed += (s, e) =>
+            configWatcher = new FileSystemWatcher(Path.GetDirectoryName(configPath) ?? appDataFolderPath, Path.GetFileName(configPath));
+            configWatcher.NotifyFilter = NotifyFilters.LastWrite;
+            configWatcher.Changed += (s, e) =>
             {
                 try
                 {
@@ -70,7 +69,21 @@ namespace Vekotin
                     Console.WriteLine($"Error reloading config: {ex.Message}");
                 }
             };
-            watcher.EnableRaisingEvents = true;
+            configWatcher.EnableRaisingEvents = true;
+        }
+
+        private void SaveConfig()
+        {
+            try
+            {
+                string jsonString = JsonSerializer.Serialize(config,
+                    new JsonSerializerOptions { WriteIndented = true });
+                File.WriteAllText(configPath, jsonString);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Failed to save config: {ex.Message}");
+            }
         }
 
         private void LoadAvailableWidgets()
@@ -187,9 +200,7 @@ namespace Vekotin
                         }
                     }
 
-                    // Update JSON config file
-                    string jsonString = JsonSerializer.Serialize(config, new JsonSerializerOptions { WriteIndented = true });
-                    File.WriteAllText(configPath, jsonString);
+                    SaveConfig();
 
                     var widget = new WidgetWindow(selected.Path, selected.Manifest, config, configPath);
                     activeWidgets.Add(widget);
@@ -235,6 +246,7 @@ namespace Vekotin
                 if (config.Widgets.TryGetValue($"{Path.GetFileName(selected.Path)}", out WidgetConfig? widgetConfig))
                 {
                     UpdateWidgetOptions(widgetConfig);
+                    SaveConfig();
                 }
             }
         }
@@ -285,6 +297,7 @@ namespace Vekotin
 
         protected override void OnClosed(EventArgs e)
         {
+            configWatcher?.Dispose();
             foreach (var widget in activeWidgets.ToList())
             {
                 widget.Close();

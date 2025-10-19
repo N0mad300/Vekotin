@@ -5,11 +5,12 @@ using System.Management;
 namespace Vekotin.Bridges
 {
     [ComVisible(true)]
-    public class CpuBridge
+    public class CpuBridge : IDisposable
     {
         private readonly PerformanceCounter usageCounter;
         private readonly PerformanceCounter clockSpeedCounter;
         private readonly ManagementObject cpuInfo;
+        private bool disposed = false;
 
         public CpuBridge()
         {
@@ -89,6 +90,17 @@ namespace Vekotin.Bridges
         {
             if (cpuInfo == null) return 0;
             return (int)(uint)cpuInfo["MaxClockSpeed"];
+        }
+
+        public void Dispose()
+        {
+            if (!disposed)
+            {
+                usageCounter?.Dispose();
+                clockSpeedCounter?.Dispose();
+                cpuInfo?.Dispose();
+                disposed = true;
+            }
         }
     }
 }
