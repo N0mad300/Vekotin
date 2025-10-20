@@ -130,13 +130,13 @@ namespace Vekotin
             // Update button state
             if (widgetConfig?.Active == true)
             {
-                WidgetOpenButton.Background = (Brush)new BrushConverter().ConvertFromString("#DC3545")!;
                 WidgetOpenButton.Content = "Close Widget";
+                WidgetOpenButton.Appearance = ControlAppearance.Danger;
             }
             else
             {
-                WidgetOpenButton.ClearValue(BackgroundProperty);
                 WidgetOpenButton.Content = "Load Widget";
+                WidgetOpenButton.Appearance = ControlAppearance.Primary;
             }
         }
 
@@ -194,16 +194,15 @@ namespace Vekotin
                 widget.Show();
 
                 // Update button
-                WidgetOpenButton.Background = (Brush)new BrushConverter()
-                    .ConvertFromString("#DC3545")!;
                 WidgetOpenButton.Content = "Close Widget";
+                WidgetOpenButton.Appearance = ControlAppearance.Danger;
             }
         }
 
         private void OnWidgetClosed(object? sender, EventArgs e)
         {
-            WidgetOpenButton.ClearValue(BackgroundProperty);
             WidgetOpenButton.Content = "Load Widget";
+            WidgetOpenButton.Appearance = ControlAppearance.Primary;
         }
 
         private void OpenDevTools_Click(object sender, RoutedEventArgs e)
