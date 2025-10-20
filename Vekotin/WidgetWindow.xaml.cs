@@ -7,24 +7,23 @@ using System.Windows;
 using System.Windows.Interop;
 
 using Microsoft.Web.WebView2.Core;
+
+using Vekotin.Services;
 using Vekotin.Bridges;
 
 namespace Vekotin
 {
     public partial class WidgetWindow : Window
     {
-        private Config config;
-        private string configPath;
+        private readonly ConfigurationManager configManager;
+        private readonly WidgetManifest manifest;
+        private CoreWebView2Environment? webViewEnvironment;
+        private CpuBridge? cpuBridge;
 
-        public string widgetPath;
-        private WidgetManifest manifest;
-
-        private CoreWebView2Environment? _webViewEnvironment;
-
-        private CpuBridge? _cpuBridge;
-
-        private bool isWebViewCleanedUp = false;
         private bool isDevToolsOpen = false;
+        private bool isClosing = false;
+
+        public string WidgetPath { get; }
 
         [DllImport("user32.dll")]
         private static extern int SetWindowLong(IntPtr hWnd, int nIndex, int dwNewLong);
@@ -43,12 +42,16 @@ namespace Vekotin
         private const int GWL_EXSTYLE = -20;
         private const int WS_EX_TOOLWINDOW = 0x80;
 
-        public WidgetWindow(string widgetPath, WidgetManifest manifest, Config config, string configPath)
+        public WidgetWindow(string widgetPath, WidgetManifest manifest, ConfigurationManager configManager)
         {
-            this.widgetPath = widgetPath;
-            this.manifest = manifest;
-            this.config = config;
-            this.configPath = configPath;
+            if (string.IsNullOrWhiteSpace(widgetPath))
+                throw new ArgumentException("Widget path cannot be null or empty", nameof(widgetPath));
+            if (!Directory.Exists(widgetPath))
+                throw new DirectoryNotFoundException($"Widget path not found: {widgetPath}");
+
+            WidgetPath = widgetPath;
+            this.manifest = manifest ?? throw new ArgumentNullException(nameof(manifest));
+            this.configManager = configManager ?? throw new ArgumentNullException(nameof(configManager));
 
             InitializeComponent();
             InitializeWidget();
@@ -56,11 +59,13 @@ namespace Vekotin
 
         private void InitializeWidget()
         {
-            this.Title = manifest.Name;
-            this.Width = manifest.Width;
-            this.Height = manifest.Height;
+            Title = manifest.Name ?? "Widget";
+            Width = manifest.Width;
+            Height = manifest.Height;
 
-            config.Widgets.TryGetValue(Path.GetFileName(widgetPath), out var widgetConfig);
+            var widgetName = Path.GetFileName(WidgetPath);
+            var widgetConfig = configManager.GetWidgetConfig(widgetName);
+
             this.Left = widgetConfig?.WindowX ?? 100;
             this.Top = widgetConfig?.WindowY ?? 100;
 
@@ -71,10 +76,11 @@ namespace Vekotin
         {
             try
             {
-                string userDataFolderPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),"Vekotin");
+                string userDataFolderPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), Constants.AppName);
+
                 Directory.CreateDirectory(userDataFolderPath);
 
-                var _webViewEnvironment = await CoreWebView2Environment.CreateAsync(
+                webViewEnvironment = await CoreWebView2Environment.CreateAsync(
                     userDataFolder: userDataFolderPath,
                     browserExecutableFolder: null,
                     options: new CoreWebView2EnvironmentOptions
@@ -82,30 +88,26 @@ namespace Vekotin
                         AdditionalBrowserArguments = "--enable-features=msWebView2EnableDraggableRegions"
                     });
 
-                await WebView.EnsureCoreWebView2Async(_webViewEnvironment);
+                await WebView.EnsureCoreWebView2Async(webViewEnvironment);
 
                 WebView.CoreWebView2.Settings.AreDevToolsEnabled = true;
-                WebView.CoreWebView2.Settings.AreDefaultContextMenusEnabled = true;
+                WebView.CoreWebView2.Settings.AreDefaultContextMenusEnabled = false;
                 WebView.CoreWebView2.Settings.IsStatusBarEnabled = false;
 
-                // Bridges
-                _cpuBridge = new CpuBridge();
-                WebView.CoreWebView2.AddHostObjectToScript("cpu", _cpuBridge);
+                // Initialize and add bridges
+                cpuBridge = new CpuBridge();
+                WebView.CoreWebView2.AddHostObjectToScript("cpu", cpuBridge);
 
-                string htmlPath = Path.Combine(widgetPath, "index.html");
+                // Navigate to widget
+                string htmlPath = Path.Combine(WidgetPath, "index.html");
                 if (File.Exists(htmlPath))
                 {
                     WebView.CoreWebView2.Navigate(new Uri(htmlPath).AbsoluteUri);
                 }
                 else
                 {
-                    WebView.NavigateToString(
-                        "<html><body style='display:flex;justify-content:center;align-items:center;height:100vh;margin:0;font-family:sans-serif;'>" +
-                        "<div style='text-align:center;'><h1>Widget Not Found</h1><p>index.html is missing</p></div>" +
-                        "</body></html>");
+                    ShowErrorPage("Widget Not Found", "index.html is missing");
                 }
-
-                WebView.CoreWebView2.WebMessageReceived += WebView_WebMessageReceived;
             }
             catch (Exception ex)
             {
@@ -114,73 +116,60 @@ namespace Vekotin
                     "Error",
                     MessageBoxButton.OK,
                     MessageBoxImage.Error);
-                this.Close();
+                Close();
             }
         }
 
-        private void WebView_WebMessageReceived(object sender, CoreWebView2WebMessageReceivedEventArgs e)
+        private void ShowErrorPage(string title, string message)
         {
-            string message = e.TryGetWebMessageAsString();
-            MessageBox.Show($"Widget message: {message}", "Message from Widget");
+            WebView.NavigateToString(
+                $"<html><body style='display:flex;justify-content:center;align-items:center;" +
+                $"height:100vh;margin:0;font-family:sans-serif;background:#1e1e1e;color:#fff;'>" +
+                $"<div style='text-align:center;'><h1>{title}</h1><p>{message}</p></div>" +
+                "</body></html>");
         }
 
         public void OpenDevTools()
         {
-            if (WebView != null && WebView.CoreWebView2 != null)
+            if (WebView?.CoreWebView2 != null && !isDevToolsOpen)
             {
-                if (!isDevToolsOpen)
-                {
-                    WebView.CoreWebView2.OpenDevToolsWindow();
-                    isDevToolsOpen = true;
-                }
+                WebView.CoreWebView2.OpenDevToolsWindow();
+                isDevToolsOpen = true;
             }
         }
 
         private void CloseDevTools()
         {
-            Process? devToolsProcess = GetDevToolsProcess();
+            var devToolsProcess = GetDevToolsProcess();
+            if (devToolsProcess == null) return;
 
-            if (devToolsProcess != null)
+            try
             {
-                try
+                IntPtr handle = devToolsProcess.MainWindowHandle;
+                if (handle != IntPtr.Zero)
                 {
-                    // Get the handle
-                    IntPtr handle = devToolsProcess.MainWindowHandle;
-
-                    if (handle != IntPtr.Zero)
-                    {
-                        // Bring the window to the foreground and send a close message
-                        SetForegroundWindow(handle);
-                        PostMessage(handle, WM_CLOSE, IntPtr.Zero, IntPtr.Zero);
-                    }
-
-                    isDevToolsOpen = false;
+                    SetForegroundWindow(handle);
+                    PostMessage(handle, WM_CLOSE, IntPtr.Zero, IntPtr.Zero);
                 }
-                catch (Exception ex)
-                {
-                    MessageBox.Show($"Error closing DevTools window: {ex.Message}");
-                }
+                isDevToolsOpen = false;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error closing DevTools: {ex.Message}");
             }
         }
 
         private Process? GetDevToolsProcess()
         {
-            // Get the source URL from your WebView2 control
             string? webViewUrl = WebView?.Source?.ToString();
-            if (string.IsNullOrEmpty(webViewUrl))
-            {
-                return null;
-            }
+            if (string.IsNullOrEmpty(webViewUrl)) return null;
 
             string urlPart = new Uri(webViewUrl).Host;
 
-            // Find the DevTools process by its window title
-            Process? devToolsProcess = Process.GetProcesses()
+            return Process.GetProcesses()
                 .FirstOrDefault(p => !string.IsNullOrEmpty(p.MainWindowTitle) &&
                                      p.MainWindowTitle.Contains("DevTools") &&
                                      p.MainWindowTitle.Contains(urlPart));
-
-            return devToolsProcess;
         }
 
         protected override void OnSourceInitialized(EventArgs e)
@@ -192,65 +181,82 @@ namespace Vekotin
             SetWindowLong(hwnd, GWL_EXSTYLE, exStyle | WS_EX_TOOLWINDOW);
         }
 
-        public async Task RemoveWebView()
+        private async Task CleanupWebView()
         {
             if (WebView?.CoreWebView2 != null)
             {
-                // Unsubscribe from all events first
-                WebView.CoreWebView2.WebMessageReceived -= WebView_WebMessageReceived;
-
                 // Remove bridges
                 WebView.CoreWebView2.RemoveHostObjectFromScript("cpu");
-                _cpuBridge?.Dispose();
-                _cpuBridge = null;
 
                 // Clean browsing data
-                await WebView.CoreWebView2.Profile.ClearBrowsingDataAsync();
+                try
+                {
+                    await WebView.CoreWebView2.Profile.ClearBrowsingDataAsync();
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Error clearing browsing data: {ex.Message}");
+                }
             }
-            _webViewEnvironment = null;
+
+            cpuBridge?.Dispose();
+            cpuBridge = null;
+
+            webViewEnvironment = null;
 
             WebView?.Dispose();
-
-            WidgetBorder.Child = null;
-            WebView = null;
+            if (WidgetBorder != null)
+            {
+                WidgetBorder.Child = null;
+            }
         }
 
         protected override async void OnClosing(CancelEventArgs e)
         {
-            if (config.Widgets.TryGetValue($"{Path.GetFileName(widgetPath)}", out WidgetConfig? widgetConfig))
+            if (isClosing)
             {
-                widgetConfig.Active = false;
-                if (widgetConfig.SavePosition == true)
-                {
-                    widgetConfig.WindowY = Convert.ToInt32(this.Top);
-                    widgetConfig.WindowX = Convert.ToInt32(this.Left);
-                }
+                base.OnClosing(e);
+                return;
             }
 
-            // Update JSON config file
-            string jsonString = JsonSerializer.Serialize(config, new JsonSerializerOptions { WriteIndented = true });
-            File.WriteAllText(configPath, jsonString);
+            e.Cancel = true;
+            isClosing = true;
 
-            if (!isWebViewCleanedUp)
+            try
             {
-                // Cancel the close event
-                e.Cancel = true;
+                // Update config
+                var widgetName = Path.GetFileName(WidgetPath);
+                configManager.UpdateWidgetConfig(widgetName, widgetConfig =>
+                {
+                    widgetConfig.Active = false;
 
-                if (isDevToolsOpen == true)
+                    if (widgetConfig.SavePosition == true)
+                    {
+                        widgetConfig.WindowX = (int)Left;
+                        widgetConfig.WindowY = (int)Top;
+                    }
+                });
+
+                configManager.Save();
+
+                // Close DevTools if open
+                if (isDevToolsOpen)
                 {
                     CloseDevTools();
                 }
 
-                // Do cleanup asynchronously
-                await RemoveWebView();
-                isWebViewCleanedUp = true;
+                // Cleanup WebView
+                await CleanupWebView();
 
-                // Now actually close the window
-                Close();
-                return;
+                // Actually close the window
+                Dispatcher.BeginInvoke(new Action(Close));
             }
-
-            base.OnClosing(e);
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error during window close: {ex.Message}");
+                // Force close even if there's an error
+                Dispatcher.BeginInvoke(new Action(Close));
+            }
         }
     }
 }

@@ -5,18 +5,19 @@ using System.Text.Json;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
+
 using Wpf.Ui.Controls;
+
+using Vekotin.Services;
 
 namespace Vekotin
 {
     public partial class ControlPanel : FluentWindow
     {
-        private List<WidgetWindow> activeWidgets = new List<WidgetWindow>();
+        private readonly List<WidgetWindow> activeWidgets = new();
+        private readonly ConfigurationManager configManager;
+
         public ObservableCollection<WidgetListItem> AvailableWidgets { get; set; }
-        private string appDataFolderPath;
-        private string configPath;
-        private Config config = new Config();
-        private FileSystemWatcher? configWatcher;
 
         public ControlPanel()
         {
@@ -25,70 +26,40 @@ namespace Vekotin
             AvailableWidgets = new ObservableCollection<WidgetListItem>();
             DataContext = this;
 
-            appDataFolderPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Vekotin");
-            configPath = Path.Combine(appDataFolderPath, "vekotin.json");
+            // Initialize configuration manager
+            var appDataPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),Constants.AppName);
 
-            LoadConfig();
-            WatchConfig();
+            configManager = new ConfigurationManager(appDataPath);
+            configManager.ConfigChanged += OnConfigChanged;
+
             LoadAvailableWidgets();
         }
 
-        private void LoadConfig()
+        /// <summary>
+        /// Handles external configuration changes.
+        /// </summary>
+        private void OnConfigChanged(object? sender, ConfigChangedEventArgs e)
         {
-            if (!File.Exists(configPath))
+            if (e.ChangeType == ConfigChangeType.Loaded)
             {
-                Directory.CreateDirectory(appDataFolderPath);
-
-                var config = new Config
+                // Refresh UI
+                Dispatcher.Invoke(() =>
                 {
-                    Vekotin = new VekotinConfig { WidgetPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Personal), "Vekotin", "Widgets") },
-                    Widgets = new Dictionary<string, WidgetConfig>()
-                };
-
-                SaveConfig();
-            }
-
-            var configJson = File.ReadAllText(configPath);
-            config = JsonSerializer.Deserialize<Config>(configJson);
-        }
-
-        private void WatchConfig()
-        {
-            configWatcher = new FileSystemWatcher(Path.GetDirectoryName(configPath) ?? appDataFolderPath, Path.GetFileName(configPath));
-            configWatcher.NotifyFilter = NotifyFilters.LastWrite;
-            configWatcher.Changed += (s, e) =>
-            {
-                try
-                {
-                    // Delay slightly to avoid file lock issues
-                    Thread.Sleep(200);
-                    LoadConfig();
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine($"Error reloading config: {ex.Message}");
-                }
-            };
-            configWatcher.EnableRaisingEvents = true;
-        }
-
-        private void SaveConfig()
-        {
-            try
-            {
-                string jsonString = JsonSerializer.Serialize(config,
-                    new JsonSerializerOptions { WriteIndented = true });
-                File.WriteAllText(configPath, jsonString);
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Failed to save config: {ex.Message}");
+                    // Refresh selected widget info here
+                    var selected = WidgetListBox.SelectedItem as WidgetListItem;
+                    if (selected != null)
+                    {
+                        OnWidgetSelected(selected);
+                    }
+                });
             }
         }
 
         private void LoadAvailableWidgets()
         {
+            var config = configManager.Current;
             string widgetsPath = config.Vekotin.WidgetPath ?? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Personal), "Vekotin", "Widgets");
+
             if (!Directory.Exists(widgetsPath))
             {
                 Directory.CreateDirectory(widgetsPath);
@@ -97,34 +68,48 @@ namespace Vekotin
             AvailableWidgets.Clear();
             foreach (var dir in Directory.GetDirectories(widgetsPath))
             {
-                string manifestPath = Path.Combine(dir, "widget.json");
+                string manifestPath = Path.Combine(dir, Constants.WidgetManifestFileName);
                 if (File.Exists(manifestPath))
                 {
                     try
                     {
-                        var manifest = JsonSerializer.Deserialize<WidgetManifest>(
-                            File.ReadAllText(manifestPath));
-                        AvailableWidgets.Add(new WidgetListItem
+                        var manifest = JsonSerializer.Deserialize<WidgetManifest>(File.ReadAllText(manifestPath));
+
+                        if (manifest != null && ValidateManifest(manifest))
                         {
-                            Name = manifest.Name,
-                            Path = dir,
-                            Manifest = manifest
-                        });
+                            AvailableWidgets.Add(new WidgetListItem
+                            {
+                                Name = manifest.Name,
+                                Path = dir,
+                                Manifest = manifest
+                            });
+                        }
+                    }
+                    catch (JsonException ex)
+                    {
+                        Console.WriteLine($"Invalid widget manifest in {dir}: {ex.Message}");
                     }
                     catch (Exception ex)
                     {
-                        Console.WriteLine($"Error loading widget: {ex.Message}");
+                        Console.WriteLine($"Error loading widget from {dir}: {ex.Message}");
                     }
                 }
             }
         }
 
+        /// <summary>
+        /// Validates a widget manifest.
+        /// </summary>
+        private bool ValidateManifest(WidgetManifest manifest)
+        {
+            if (string.IsNullOrWhiteSpace(manifest.Name)) return false;
+            if (manifest.Width <= 0 || manifest.Height <= 0) return false;
+            return true;
+        }
+
         private void WidgetListBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
-            var listBox = sender as ListBox;
-            var selected = listBox?.SelectedItem as WidgetListItem;
-
-            if (selected != null)
+            if (sender is ListBox listBox && listBox.SelectedItem is WidgetListItem selected)
             {
                 OnWidgetSelected(selected);
             }
@@ -132,35 +117,21 @@ namespace Vekotin
 
         private void OnWidgetSelected(WidgetListItem selected)
         {
-            if (config.Widgets.TryGetValue(Path.GetFileName(selected.Path), out WidgetConfig? widgetConfig))
-            {
-                DraggableToggleSwitch.IsChecked = widgetConfig.Draggable;
-                ClickThroughToggleSwitch.IsChecked = widgetConfig.ClickThrough;
-                KeepOnScreenToggleSwitch.IsChecked = widgetConfig.KeepOnScreen;
-                SavePositionToggleSwitch.IsChecked = widgetConfig.SavePosition;
-                SnapToEdgesToggleSwitch.IsChecked = widgetConfig.SnapToEdges;
-            }
-            else
-            {
-                DraggableToggleSwitch.IsChecked = false;
-                ClickThroughToggleSwitch.IsChecked = false;
-                KeepOnScreenToggleSwitch.IsChecked = false;
-                SavePositionToggleSwitch.IsChecked = false;
-                SnapToEdgesToggleSwitch.IsChecked = false;
-            }
+            var widgetName = Path.GetFileName(selected.Path);
+            var widgetConfig = configManager.GetWidgetConfig(widgetName);
 
-            if (widgetConfig != null)
+            // Update toggle switches
+            DraggableToggleSwitch.IsChecked = widgetConfig?.Draggable ?? false;
+            ClickThroughToggleSwitch.IsChecked = widgetConfig?.ClickThrough ?? false;
+            KeepOnScreenToggleSwitch.IsChecked = widgetConfig?.KeepOnScreen ?? false;
+            SavePositionToggleSwitch.IsChecked = widgetConfig?.SavePosition ?? false;
+            SnapToEdgesToggleSwitch.IsChecked = widgetConfig?.SnapToEdges ?? false;
+
+            // Update button state
+            if (widgetConfig?.Active == true)
             {
-                if (widgetConfig.Active == true)
-                {
-                    WidgetOpenButton.Background = (Brush)new BrushConverter().ConvertFromString("#DC3545");
-                    WidgetOpenButton.Content = "Close Widget";
-                }
-                else
-                {
-                    WidgetOpenButton.ClearValue(BackgroundProperty);
-                    WidgetOpenButton.Content = "Load Widget";
-                }
+                WidgetOpenButton.Background = (Brush)new BrushConverter().ConvertFromString("#DC3545")!;
+                WidgetOpenButton.Content = "Close Widget";
             }
             else
             {
@@ -171,55 +142,65 @@ namespace Vekotin
 
         private void OpenWidget_Click(object sender, RoutedEventArgs e)
         {
-            var selected = WidgetListBox.SelectedItem as WidgetListItem;
-            if (selected != null)
+            if (WidgetListBox.SelectedItem is not WidgetListItem selected)
+                return;
+
+            var widgetName = Path.GetFileName(selected.Path);
+            var existingWindow = FindWidgetWindow(selected.Path);
+
+            if (existingWindow != null)
             {
-                WidgetWindow? widgetWindow = FindWidgetWindow(selected.Path);
-                if (widgetWindow == null)
+                // Widget is open, close it
+                existingWindow.Close();
+            }
+            else
+            {
+                // Widget is not open, create and show it
+                var widgetConfig = configManager.GetWidgetConfig(widgetName);
+
+                if (widgetConfig == null)
                 {
-                    if (!config.Widgets.ContainsKey(Path.GetFileName(selected.Path)))
+                    // Create new config with current toggle values
+                    widgetConfig = new WidgetConfig
                     {
-                        config.Widgets[Path.GetFileName(selected.Path)] = new WidgetConfig
-                        {
-                            Active = true,
-                            WindowX = 100,
-                            WindowY = 100,
-                            Draggable = DraggableToggleSwitch.IsChecked,
-                            ClickThrough = ClickThroughToggleSwitch.IsChecked,
-                            KeepOnScreen = KeepOnScreenToggleSwitch.IsChecked,
-                            SavePosition = SavePositionToggleSwitch.IsChecked,
-                            SnapToEdges = SnapToEdgesToggleSwitch.IsChecked
-                        };
-                    }
-                    else
-                    {
-                        if (config.Widgets.TryGetValue($"{Path.GetFileName(selected.Path)}", out WidgetConfig? widgetConfig))
-                        {
-                            widgetConfig.Active = true;
-                            UpdateWidgetOptions(widgetConfig);
-                        }
-                    }
-
-                    SaveConfig();
-
-                    var widget = new WidgetWindow(selected.Path, selected.Manifest, config, configPath);
-                    activeWidgets.Add(widget);
-                    widget.Closed += (s, ev) => activeWidgets.Remove(widget);
-                    widget.Closed += OnWidgetClosed;
-                    widget.Show();
-
-                    // Update "Load Widget" button style
-                    WidgetOpenButton.Background = (Brush)new BrushConverter().ConvertFromString("#DC3545");
-                    WidgetOpenButton.Content = "Close Widget";
+                        Active = true,
+                        WindowX = 100,
+                        WindowY = 100,
+                        Draggable = DraggableToggleSwitch.IsChecked,
+                        ClickThrough = ClickThroughToggleSwitch.IsChecked,
+                        KeepOnScreen = KeepOnScreenToggleSwitch.IsChecked,
+                        SavePosition = SavePositionToggleSwitch.IsChecked,
+                        SnapToEdges = SnapToEdgesToggleSwitch.IsChecked
+                    };
+                    configManager.SetWidgetConfig(widgetName, widgetConfig);
                 }
                 else
                 {
-                    widgetWindow.Close();
+                    // Update existing config
+                    widgetConfig.Active = true;
+                    UpdateWidgetOptions(widgetConfig);
                 }
+
+                configManager.Save();
+
+                var widget = new WidgetWindow(
+                    selected.Path,
+                    selected.Manifest,
+                    configManager);
+
+                activeWidgets.Add(widget);
+                widget.Closed += (s, ev) => activeWidgets.Remove(widget);
+                widget.Closed += OnWidgetClosed;
+                widget.Show();
+
+                // Update button
+                WidgetOpenButton.Background = (Brush)new BrushConverter()
+                    .ConvertFromString("#DC3545")!;
+                WidgetOpenButton.Content = "Close Widget";
             }
         }
 
-        private void OnWidgetClosed(object sender, EventArgs e)
+        private void OnWidgetClosed(object? sender, EventArgs e)
         {
             WidgetOpenButton.ClearValue(BackgroundProperty);
             WidgetOpenButton.Content = "Load Widget";
@@ -227,28 +208,25 @@ namespace Vekotin
 
         private void OpenDevTools_Click(object sender, RoutedEventArgs e)
         {
-            var selected = WidgetListBox.SelectedItem as WidgetListItem;
-            if (selected != null)
+            if (WidgetListBox.SelectedItem is WidgetListItem selected)
             {
-                WidgetWindow? widgetWindow = FindWidgetWindow(selected.Path);
-                if (widgetWindow != null)
-                {
-                    widgetWindow.OpenDevTools();
-                }
+                FindWidgetWindow(selected.Path)?.OpenDevTools();
             }
         }
 
         private void Toggle_Checked(object sender, RoutedEventArgs e)
         {
-            var selected = WidgetListBox.SelectedItem as WidgetListItem;
-            if (selected != null)
+            if (WidgetListBox.SelectedItem is not WidgetListItem selected)
+                return;
+
+            var widgetName = Path.GetFileName(selected.Path);
+
+            configManager.UpdateWidgetConfig(widgetName, widgetConfig =>
             {
-                if (config.Widgets.TryGetValue($"{Path.GetFileName(selected.Path)}", out WidgetConfig? widgetConfig))
-                {
-                    UpdateWidgetOptions(widgetConfig);
-                    SaveConfig();
-                }
-            }
+                UpdateWidgetOptions(widgetConfig);
+            });
+
+            configManager.Save();
         }
 
         private void UpdateWidgetOptions(WidgetConfig widgetConfig)
@@ -267,9 +245,9 @@ namespace Vekotin
 
         private void ShowMenuItem_Click(object sender, RoutedEventArgs e)
         {
-            this.Show();
-            this.WindowState = WindowState.Normal;
-            this.Activate();
+            Show();
+            WindowState = WindowState.Normal;
+            Activate();
         }
 
         private void ExitMenuItem_Click(object sender, RoutedEventArgs e)
@@ -279,54 +257,26 @@ namespace Vekotin
 
         private WidgetWindow? FindWidgetWindow(string path)
         {
-            foreach (WidgetWindow widgetWindow in activeWidgets)
-            {
-                if (widgetWindow.widgetPath == path)
-                {
-                    return widgetWindow;
-                }
-            }
-            return null;
+            return activeWidgets.FirstOrDefault(w => w.WidgetPath == path);
         }
 
         protected override void OnClosing(System.ComponentModel.CancelEventArgs e)
         {
             e.Cancel = true;
-            this.Hide();
+            Hide();
         }
 
         protected override void OnClosed(EventArgs e)
         {
-            configWatcher?.Dispose();
+            configManager?.Dispose();
+
             foreach (var widget in activeWidgets.ToList())
             {
                 widget.Close();
             }
+
             base.OnClosed(e);
         }
-    }
-
-    public class Config
-    {
-        public VekotinConfig Vekotin { get; set; } = new();
-        public Dictionary<string, WidgetConfig> Widgets { get; set; } = new();
-    }
-
-    public class VekotinConfig
-    {
-        public string? WidgetPath { get; set; }
-    }
-
-    public class WidgetConfig
-    {
-        public bool Active { get; set; }
-        public int WindowX { get; set; }
-        public int WindowY { get; set; }
-        public bool? Draggable { get; set; }
-        public bool? ClickThrough { get; set; }
-        public bool? KeepOnScreen { get; set; }
-        public bool? SavePosition { get; set; }
-        public bool? SnapToEdges { get; set; }
     }
 
     public class WidgetListItem
@@ -334,16 +284,5 @@ namespace Vekotin
         public string? Name { get; set; }
         public string Path { get; set; }
         public WidgetManifest Manifest { get; set; }
-    }
-
-    public class WidgetManifest
-    {
-        public string? Name { get; set; }
-        public string? Author { get; set; }
-        public string? Version { get; set; }
-        public string? License { get; set; }
-        public string? Description { get; set; }
-        public int Width { get; set; }
-        public int Height { get; set; }
     }
 }
