@@ -15,9 +15,13 @@ namespace Vekotin
     {
         private Config config;
         private string configPath;
+
         public string widgetPath;
         private WidgetManifest manifest;
+
         private CoreWebView2Environment? _webViewEnvironment;
+
+        private CpuBridge? _cpuBridge;
 
         private bool isWebViewCleanedUp = false;
         private bool isDevToolsOpen = false;
@@ -85,7 +89,8 @@ namespace Vekotin
                 WebView.CoreWebView2.Settings.IsStatusBarEnabled = false;
 
                 // Bridges
-                WebView.CoreWebView2.AddHostObjectToScript("cpu", new CpuBridge());
+                _cpuBridge = new CpuBridge();
+                WebView.CoreWebView2.AddHostObjectToScript("cpu", _cpuBridge);
 
                 string htmlPath = Path.Combine(widgetPath, "index.html");
                 if (File.Exists(htmlPath))
@@ -196,6 +201,8 @@ namespace Vekotin
 
                 // Remove bridges
                 WebView.CoreWebView2.RemoveHostObjectFromScript("cpu");
+                _cpuBridge?.Dispose();
+                _cpuBridge = null;
 
                 // Clean browsing data
                 await WebView.CoreWebView2.Profile.ClearBrowsingDataAsync();
