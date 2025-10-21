@@ -215,17 +215,43 @@ namespace Vekotin
 
         private void Toggle_Checked(object sender, RoutedEventArgs e)
         {
-            if (WidgetListBox.SelectedItem is not WidgetListItem selected)
+            if (sender is not ToggleSwitch toggleControl || WidgetListBox.SelectedItem is not WidgetListItem selected)
                 return;
 
             var widgetName = Path.GetFileName(selected.Path);
 
             configManager.UpdateWidgetConfig(widgetName, widgetConfig =>
             {
-                UpdateWidgetOptions(widgetConfig);
+                switch (toggleControl.Name)
+                {
+                    case "DraggableToggleSwitch":
+                        widgetConfig.Draggable = toggleControl.IsChecked;
+                        break;
+                    case "ClickThroughToggleSwitch":
+                        widgetConfig.ClickThrough = toggleControl.IsChecked;
+                        break;
+                    case "KeepOnScreenToggleSwitch":
+                        widgetConfig.KeepOnScreen = toggleControl.IsChecked;
+                        break;
+                    case "SavePositionToggleSwitch":
+                        widgetConfig.SavePosition = toggleControl.IsChecked;
+                        break;
+                    case "SnapToEdgesToggleSwitch":
+                        widgetConfig.SnapToEdges = toggleControl.IsChecked;
+                        break;
+                }
             });
 
             configManager.Save();
+
+            var existingWindow = FindWidgetWindow(selected.Path);
+            if (existingWindow != null)
+            {
+                if (toggleControl.Name == "ClickThroughToggleSwitch")
+                {
+                    existingWindow.ApplyWindowStyles();
+                }
+            }
         }
 
         private void UpdateWidgetOptions(WidgetConfig widgetConfig)

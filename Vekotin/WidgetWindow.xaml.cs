@@ -39,8 +39,10 @@ namespace Vekotin
         static extern bool PostMessage(IntPtr hWnd, uint Msg, IntPtr wParam, IntPtr lParam);
 
         private const uint WM_CLOSE = 0x0010;
+
         private const int GWL_EXSTYLE = -20;
         private const int WS_EX_TOOLWINDOW = 0x80;
+        private const int WS_EX_TRANSPARENT = 0x20;
 
         public WidgetWindow(string widgetPath, WidgetManifest manifest, ConfigurationManager configManager)
         {
@@ -175,10 +177,30 @@ namespace Vekotin
         protected override void OnSourceInitialized(EventArgs e)
         {
             base.OnSourceInitialized(e);
+            ApplyWindowStyles();
+        }
 
+        public void ApplyWindowStyles()
+        {
             var hwnd = new WindowInteropHelper(this).Handle;
             int exStyle = GetWindowLong(hwnd, GWL_EXSTYLE);
-            SetWindowLong(hwnd, GWL_EXSTYLE, exStyle | WS_EX_TOOLWINDOW);
+
+            // Always set as a tool window to hide from Alt+Tab
+            exStyle |= WS_EX_TOOLWINDOW;
+
+            var widgetName = Path.GetFileName(WidgetPath);
+            var widgetConfig = configManager.GetWidgetConfig(widgetName);
+
+            if (widgetConfig?.ClickThrough == true)
+            {
+                exStyle |= WS_EX_TRANSPARENT;
+            }
+            else
+            {
+                exStyle &= ~WS_EX_TRANSPARENT;
+            }
+
+            SetWindowLong(hwnd, GWL_EXSTYLE, exStyle);
         }
 
         private async Task CleanupWebView()
