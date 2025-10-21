@@ -243,15 +243,6 @@ namespace Vekotin
             });
 
             configManager.Save();
-
-            var existingWindow = FindWidgetWindow(selected.Path);
-            if (existingWindow != null)
-            {
-                if (toggleControl.Name == "ClickThroughToggleSwitch")
-                {
-                    existingWindow.ApplyWindowStyles();
-                }
-            }
         }
 
         private void UpdateWidgetOptions(WidgetConfig widgetConfig)

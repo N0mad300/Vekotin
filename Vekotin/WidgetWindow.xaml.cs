@@ -23,6 +23,10 @@ namespace Vekotin
         private bool isDevToolsOpen = false;
         private bool isClosing = false;
 
+        // Snap settings
+        private const int SnapDistance = 20; // Pixels from edge to trigger snap
+        private const int SnapMargin = 0; // Final distance from edge when snapped
+
         public string WidgetPath { get; }
 
         [DllImport("user32.dll")]
@@ -38,6 +42,31 @@ namespace Vekotin
         [DllImport("user32.dll", SetLastError = true)]
         static extern bool PostMessage(IntPtr hWnd, uint Msg, IntPtr wParam, IntPtr lParam);
 
+        [DllImport("user32.dll")]
+        private static extern IntPtr MonitorFromWindow(IntPtr hwnd, uint dwFlags);
+
+        [DllImport("user32.dll")]
+        private static extern bool GetMonitorInfo(IntPtr hMonitor, ref MONITORINFO lpmi);
+
+        [StructLayout(LayoutKind.Sequential)]
+        private struct MONITORINFO
+        {
+            public uint cbSize;
+            public RECT rcMonitor;
+            public RECT rcWork;
+            public uint dwFlags;
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
+        private struct RECT
+        {
+            public int Left;
+            public int Top;
+            public int Right;
+            public int Bottom;
+        }
+
+        private const uint MONITOR_DEFAULTTONEAREST = 2;
         private const uint WM_CLOSE = 0x0010;
 
         private const int GWL_EXSTYLE = -20;
@@ -71,7 +100,173 @@ namespace Vekotin
             this.Left = widgetConfig?.WindowX ?? 100;
             this.Top = widgetConfig?.WindowY ?? 100;
 
+            // Set up drag handling if draggable
+            UpdateDragHandlers();
+
+            // Keep on screen if enabled
+            if (widgetConfig?.KeepOnScreen == true)
+            {
+                ConstrainToScreen();
+            }
+
+            // Listen for configuration changes
+            configManager.ConfigChanged += OnConfigurationChanged;
+
             InitializeWebView();
+        }
+
+        /// <summary>
+        /// Handles configuration changes from the control panel.
+        /// </summary>
+        private void OnConfigurationChanged(object? sender, ConfigChangedEventArgs e)
+        {
+            Dispatcher.Invoke(() =>
+            {
+                UpdateDragHandlers();
+                ApplyWindowStyles();
+            });
+        }
+
+        /// <summary>
+        /// Enables or disables drag handlers based on the Draggable setting.
+        /// </summary>
+        private void UpdateDragHandlers()
+        {
+            var widgetName = Path.GetFileName(WidgetPath);
+            var widgetConfig = configManager.GetWidgetConfig(widgetName);
+
+            // Remove existing handlers first to avoid duplicates
+            LocationChanged -= OnWidgetLocationChanged;
+
+            // Add handlers
+            if (widgetConfig?.SnapToEdges == true || widgetConfig?.KeepOnScreen == true)
+            {
+                LocationChanged += OnWidgetLocationChanged;
+            }
+        }
+
+        private void OnWidgetLocationChanged(object? sender, EventArgs e)
+        {
+            var widgetName = Path.GetFileName(WidgetPath);
+            var widgetConfig = configManager.GetWidgetConfig(widgetName);
+
+            // Apply snap to edges after dragging
+            if (widgetConfig?.SnapToEdges == true)
+            {
+                SnapToNearestEdge();
+            }
+
+            // Keep on screen after dragging
+            if (widgetConfig?.KeepOnScreen == true)
+            {
+                ConstrainToScreen();
+            }
+        }
+
+        /// <summary>
+        /// Gets the working area of the screen containing this window using Win32 API.
+        /// </summary>
+        private Rect GetCurrentScreenWorkingArea()
+        {
+            var hwnd = new WindowInteropHelper(this).Handle;
+            var monitor = MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST);
+
+            if (monitor != IntPtr.Zero)
+            {
+                MONITORINFO monitorInfo = new MONITORINFO();
+                monitorInfo.cbSize = (uint)Marshal.SizeOf(monitorInfo);
+
+                if (GetMonitorInfo(monitor, ref monitorInfo))
+                {
+                    var workArea = monitorInfo.rcWork;
+                    return new Rect(
+                        workArea.Left,
+                        workArea.Top,
+                        workArea.Right - workArea.Left,
+                        workArea.Bottom - workArea.Top);
+                }
+            }
+
+            // Fallback to primary screen
+            return SystemParameters.WorkArea;
+        }
+
+        /// <summary>
+        /// Snaps the window to the nearest screen edge if within snap distance.
+        /// </summary>
+        private void SnapToNearestEdge()
+        {
+            var workingArea = GetCurrentScreenWorkingArea();
+
+            double left = this.Left;
+            double top = this.Top;
+            double right = this.Left + this.Width;
+            double bottom = this.Top + this.Height;
+
+            // Check distance from each edge
+            double distanceLeft = Math.Abs(left - workingArea.Left);
+            double distanceTop = Math.Abs(top - workingArea.Top);
+            double distanceRight = Math.Abs(right - workingArea.Right);
+            double distanceBottom = Math.Abs(bottom - workingArea.Bottom);
+
+            // Find minimum distance
+            double minDistance = Math.Min(Math.Min(distanceLeft, distanceTop),
+                                         Math.Min(distanceRight, distanceBottom));
+
+            // Snap if within threshold
+            if (minDistance <= SnapDistance)
+            {
+                if (minDistance == distanceLeft)
+                {
+                    this.Left = workingArea.Left + SnapMargin;
+                }
+                else if (minDistance == distanceTop)
+                {
+                    this.Top = workingArea.Top + SnapMargin;
+                }
+                else if (minDistance == distanceRight)
+                {
+                    this.Left = workingArea.Right - this.Width - SnapMargin;
+                }
+                else if (minDistance == distanceBottom)
+                {
+                    this.Top = workingArea.Bottom - this.Height - SnapMargin;
+                }
+            }
+        }
+
+        /// <summary>
+        /// Constrains the window to stay within the screen bounds.
+        /// </summary>
+        private void ConstrainToScreen()
+        {
+            var workingArea = GetCurrentScreenWorkingArea();
+
+            double left = this.Left;
+            double top = this.Top;
+
+            // Constrain horizontal position
+            if (left < workingArea.Left)
+            {
+                left = workingArea.Left;
+            }
+            else if (left + this.Width > workingArea.Right)
+            {
+                left = workingArea.Right - this.Width;
+            }
+
+            // Constrain vertical position
+            if (top < workingArea.Top)
+            {
+                top = workingArea.Top;
+            }
+            else if (top + this.Height > workingArea.Bottom)
+            {
+                top = workingArea.Bottom - this.Height;
+            }
+
+            this.Left = left;
+            this.Top = top;
         }
 
         private async void InitializeWebView()
@@ -180,7 +375,7 @@ namespace Vekotin
             ApplyWindowStyles();
         }
 
-        public void ApplyWindowStyles()
+        private void ApplyWindowStyles()
         {
             var hwnd = new WindowInteropHelper(this).Handle;
             int exStyle = GetWindowLong(hwnd, GWL_EXSTYLE);
@@ -246,6 +441,9 @@ namespace Vekotin
 
             try
             {
+                // Unsubscribe from config changes
+                configManager.ConfigChanged -= OnConfigurationChanged;
+
                 // Update config
                 var widgetName = Path.GetFileName(WidgetPath);
                 configManager.UpdateWidgetConfig(widgetName, widgetConfig =>
