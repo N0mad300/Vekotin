@@ -2,7 +2,6 @@
 using System.Diagnostics;
 using System.IO;
 using System.Runtime.InteropServices;
-using System.Text.Json;
 using System.Windows;
 using System.Windows.Interop;
 
@@ -24,8 +23,8 @@ namespace Vekotin
         private bool isClosing = false;
 
         // Snap settings
-        private const int SnapDistance = 20; // Pixels from edge to trigger snap
-        private const int SnapMargin = 0; // Final distance from edge when snapped
+        private const int SnapDistance = 20;    // Pixels from edge to trigger snap
+        private const int SnapMargin = 0;       // Final distance from edge when snapped
 
         public string WidgetPath { get; }
 
@@ -97,8 +96,10 @@ namespace Vekotin
             var widgetName = Path.GetFileName(WidgetPath);
             var widgetConfig = configManager.GetWidgetConfig(widgetName);
 
-            this.Left = widgetConfig?.WindowX ?? 100;
-            this.Top = widgetConfig?.WindowY ?? 100;
+            Left = widgetConfig?.WindowX ?? 100;
+            Top = widgetConfig?.WindowY ?? 100;
+
+            InitializeWebView();
 
             // Set up drag handling if draggable
             UpdateDragHandlers();
@@ -111,8 +112,6 @@ namespace Vekotin
 
             // Listen for configuration changes
             configManager.ConfigChanged += OnConfigurationChanged;
-
-            InitializeWebView();
         }
 
         /// <summary>
@@ -122,6 +121,12 @@ namespace Vekotin
         {
             Dispatcher.Invoke(() =>
             {
+                var widgetName = Path.GetFileName(WidgetPath);
+                var widgetConfig = configManager.GetWidgetConfig(widgetName);
+
+                WebView.CoreWebView2.Settings.IsNonClientRegionSupportEnabled = widgetConfig?.Draggable ?? true;
+                WebView.Reload();
+
                 UpdateDragHandlers();
                 ApplyWindowStyles();
             });
@@ -198,10 +203,10 @@ namespace Vekotin
         {
             var workingArea = GetCurrentScreenWorkingArea();
 
-            double left = this.Left;
-            double top = this.Top;
-            double right = this.Left + this.Width;
-            double bottom = this.Top + this.Height;
+            double left = Left;
+            double top = Top;
+            double right = Left + Width;
+            double bottom = Top + Height;
 
             // Check distance from each edge
             double distanceLeft = Math.Abs(left - workingArea.Left);
@@ -218,19 +223,19 @@ namespace Vekotin
             {
                 if (minDistance == distanceLeft)
                 {
-                    this.Left = workingArea.Left + SnapMargin;
+                    Left = workingArea.Left + SnapMargin;
                 }
                 else if (minDistance == distanceTop)
                 {
-                    this.Top = workingArea.Top + SnapMargin;
+                    Top = workingArea.Top + SnapMargin;
                 }
                 else if (minDistance == distanceRight)
                 {
-                    this.Left = workingArea.Right - this.Width - SnapMargin;
+                    Left = workingArea.Right - Width - SnapMargin;
                 }
                 else if (minDistance == distanceBottom)
                 {
-                    this.Top = workingArea.Bottom - this.Height - SnapMargin;
+                    Top = workingArea.Bottom - Height - SnapMargin;
                 }
             }
         }
@@ -242,17 +247,17 @@ namespace Vekotin
         {
             var workingArea = GetCurrentScreenWorkingArea();
 
-            double left = this.Left;
-            double top = this.Top;
+            double left = Left;
+            double top = Top;
 
             // Constrain horizontal position
             if (left < workingArea.Left)
             {
                 left = workingArea.Left;
             }
-            else if (left + this.Width > workingArea.Right)
+            else if (left + Width > workingArea.Right)
             {
-                left = workingArea.Right - this.Width;
+                left = workingArea.Right - Width;
             }
 
             // Constrain vertical position
@@ -260,13 +265,13 @@ namespace Vekotin
             {
                 top = workingArea.Top;
             }
-            else if (top + this.Height > workingArea.Bottom)
+            else if (top + Height > workingArea.Bottom)
             {
-                top = workingArea.Bottom - this.Height;
+                top = workingArea.Bottom - Height;
             }
 
-            this.Left = left;
-            this.Top = top;
+            Left = left;
+            Top = top;
         }
 
         private async void InitializeWebView()
@@ -275,21 +280,23 @@ namespace Vekotin
             {
                 string userDataFolderPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), Constants.AppName);
 
+                var widgetName = Path.GetFileName(WidgetPath);
+                var widgetConfig = configManager.GetWidgetConfig(widgetName);
+
                 Directory.CreateDirectory(userDataFolderPath);
 
                 webViewEnvironment = await CoreWebView2Environment.CreateAsync(
                     userDataFolder: userDataFolderPath,
                     browserExecutableFolder: null,
-                    options: new CoreWebView2EnvironmentOptions
-                    {
-                        AdditionalBrowserArguments = "--enable-features=msWebView2EnableDraggableRegions"
-                    });
+                    options: new CoreWebView2EnvironmentOptions{}
+                );
 
                 await WebView.EnsureCoreWebView2Async(webViewEnvironment);
 
                 WebView.CoreWebView2.Settings.AreDevToolsEnabled = true;
                 WebView.CoreWebView2.Settings.AreDefaultContextMenusEnabled = false;
                 WebView.CoreWebView2.Settings.IsStatusBarEnabled = false;
+                WebView.CoreWebView2.Settings.IsNonClientRegionSupportEnabled = widgetConfig?.Draggable ?? true;
 
                 // Initialize and add bridges
                 cpuBridge = new CpuBridge();
