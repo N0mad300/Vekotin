@@ -39,7 +39,7 @@ namespace Vekotin
         /// </summary>
         private void OnConfigChanged(object? sender, ConfigChangedEventArgs e)
         {
-            if (e.ChangeType == ConfigChangeType.Loaded)
+            if (e.ChangeType == ConfigChangeType.Loaded || e.ChangeType == ConfigChangeType.ExternalChange)
             {
                 // Refresh UI
                 Dispatcher.Invoke(() =>

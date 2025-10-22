@@ -14,6 +14,7 @@ namespace Vekotin.Services
         private FileSystemWatcher? configWatcher;
         private Timer? reloadTimer;
         private bool disposed = false;
+        private bool isSaving = false;
 
         public event EventHandler<ConfigChangedEventArgs>? ConfigChanged;
 
@@ -40,7 +41,7 @@ namespace Vekotin.Services
             config = new Config();
 
             EnsureConfigExists(appDataFolderPath);
-            Load();
+            Load(ConfigChangeType.Loaded);
             StartWatching();
         }
 
@@ -72,19 +73,20 @@ namespace Vekotin.Services
         /// <summary>
         /// Loads configuration from disk (thread-safe).
         /// </summary>
-        public void Load()
+        private void Load(ConfigChangeType changeType)
         {
+            Config? loadedConfig = null;
+
             lock (configLock)
             {
                 try
                 {
                     var configJson = File.ReadAllText(configPath);
-                    var loadedConfig = JsonSerializer.Deserialize<Config>(configJson);
+                    loadedConfig = JsonSerializer.Deserialize<Config>(configJson);
 
                     if (loadedConfig != null)
                     {
                         config = loadedConfig;
-                        OnConfigChanged(ConfigChangeType.Loaded);
                     }
                 }
                 catch (JsonException ex)
@@ -96,6 +98,19 @@ namespace Vekotin.Services
                     throw new ConfigurationException("Failed to read configuration file", ex);
                 }
             }
+
+            if (loadedConfig != null)
+            {
+                OnConfigChanged(changeType);
+            }
+        }
+
+        /// <summary>
+        /// Public load method for manual reloading.
+        /// </summary>
+        public void Load()
+        {
+            Load(ConfigChangeType.Loaded);
         }
 
         /// <summary>
@@ -106,8 +121,9 @@ namespace Vekotin.Services
             lock (configLock)
             {
                 SaveInternal(config);
-                OnConfigChanged(ConfigChangeType.Saved);
             }
+
+            OnConfigChanged(ConfigChangeType.Saved);
         }
 
         /// <summary>
@@ -117,11 +133,7 @@ namespace Vekotin.Services
         {
             try
             {
-                // Temporarily disable file watcher to avoid triggering reload
-                if (configWatcher != null)
-                {
-                    configWatcher.EnableRaisingEvents = false;
-                }
+                isSaving = true;
 
                 var jsonString = JsonSerializer.Serialize(configToSave,
                     new JsonSerializerOptions { WriteIndented = true });
@@ -134,17 +146,11 @@ namespace Vekotin.Services
             }
             finally
             {
-                // Re-enable watcher after a short delay
-                if (configWatcher != null)
+                // Reset the flag after a delay to account for file system latency
+                Task.Delay(1000).ContinueWith(_ =>
                 {
-                    Task.Delay(500).ContinueWith(_ =>
-                    {
-                        if (configWatcher != null && !disposed)
-                        {
-                            configWatcher.EnableRaisingEvents = true;
-                        }
-                    });
-                }
+                    isSaving = false;
+                });
             }
         }
 
@@ -221,13 +227,17 @@ namespace Vekotin.Services
         /// </summary>
         private void OnFileChanged(object sender, FileSystemEventArgs e)
         {
+            // Ignore changes we caused ourselves
+            if (isSaving)
+                return;
+
             // Debounce: reset timer each time file changes
             reloadTimer?.Dispose();
             reloadTimer = new Timer(_ =>
             {
                 try
                 {
-                    Load();
+                    Load(ConfigChangeType.ExternalChange);
                 }
                 catch (Exception ex)
                 {
@@ -242,7 +252,13 @@ namespace Vekotin.Services
         /// </summary>
         private void OnConfigChanged(ConfigChangeType changeType)
         {
-            ConfigChanged?.Invoke(this, new ConfigChangedEventArgs(changeType, config));
+            Config configCopy;
+            lock (configLock)
+            {
+                configCopy = config;
+            }
+
+            ConfigChanged?.Invoke(this, new ConfigChangedEventArgs(changeType, configCopy));
         }
 
         public void Dispose()
