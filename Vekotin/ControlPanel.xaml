@@ -8,7 +8,6 @@
         xmlns:local="clr-namespace:Vekotin"
         mc:Ignorable="d"
         Title="Vekotin"
-        MinWidth="1200"
         Height="600" 
         Width="1200"
         WindowStartupLocation="CenterScreen"
@@ -89,7 +88,9 @@
                         <Border Grid.Column="0" 
                                 CornerRadius="4"
                                 Padding="0,0,15,0">
-                            <ui:TextBox x:Name="WidgetSearchBox" PlaceholderText="Search widget..."/>
+                            <ui:TextBox x:Name="SearchBox" 
+                                        PlaceholderText="Search widget..."
+                                        TextChanged="SearchBox_TextChanged"/>
                         </Border>
 
                         <!-- Refresh Widget List Button -->

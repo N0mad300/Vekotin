@@ -1,13 +1,13 @@
 ﻿
 using System.Collections.ObjectModel;
+using System.ComponentModel;
 using System.IO;
 using System.Text.Json;
 using System.Windows;
 using System.Windows.Controls;
-
-using Wpf.Ui.Controls;
-
+using System.Windows.Data;
 using Vekotin.Services;
+using Wpf.Ui.Controls;
 
 namespace Vekotin
 {
@@ -17,6 +17,7 @@ namespace Vekotin
         private readonly ConfigurationManager configManager;
 
         public ObservableCollection<WidgetListItem> AvailableWidgets { get; set; }
+        private ICollectionView _widgetsView;
 
         public ControlPanel()
         {
@@ -94,6 +95,8 @@ namespace Vekotin
                     }
                 }
             }
+
+            _widgetsView = CollectionViewSource.GetDefaultView(AvailableWidgets);
         }
 
         /// <summary>
@@ -104,6 +107,30 @@ namespace Vekotin
             if (string.IsNullOrWhiteSpace(manifest.Name)) return false;
             if (manifest.Width <= 0 || manifest.Height <= 0) return false;
             return true;
+        }
+
+        /// <summary>
+        /// Filter the list of widgets based on searchbox content
+        /// </summary>
+        private void SearchBox_TextChanged(object sender, TextChangedEventArgs e)
+        {
+            string filter = SearchBox.Text?.Trim().ToLower();
+
+            if (string.IsNullOrWhiteSpace(filter))
+            {
+                _widgetsView.Filter = null; // Show all items
+            }
+            else
+            {
+                _widgetsView.Filter = obj =>
+                {
+                    if (obj is WidgetListItem item)
+                        return item.Name.ToLower().Contains(filter);
+                    return false;
+                };
+            }
+
+            _widgetsView.Refresh();
         }
 
         private void WidgetListBox_SelectionChanged(object sender, SelectionChangedEventArgs e)

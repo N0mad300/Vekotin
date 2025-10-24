@@ -8,7 +8,8 @@
     <UseWPF>true</UseWPF>
     <ProduceReferenceAssembly>True</ProduceReferenceAssembly>
     <UseWindowsForms>False</UseWindowsForms>
-    <ApplicationIcon>assets\vekotin.ico</ApplicationIcon>
+    <ApplicationIcon>Assets\vekotin.ico</ApplicationIcon>
+    <Version>1.0.0</Version>
   </PropertyGroup>
 
   <ItemGroup>
