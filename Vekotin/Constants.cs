@@ -230,7 +230,7 @@ button, a, input, textarea {
                 Name = "Vekotin - CPU Monitor",
                 Author = "N0mad300",
                 Version = "1.0.0",
-                License = "",
+                License = "MIT",
                 Description = "Monitor CPU usage",
                 Width = 255,
                 Height = 210
@@ -487,7 +487,7 @@ button, a, input, textarea {
                 Name = "Vekotin - Clock",
                 Author = "N0mad300",
                 Version = "1.0.0",
-                License = "",
+                License = "MIT",
                 Description = "Display time and date",
                 Width = 250,
                 Height = 210
