@@ -161,7 +161,7 @@ namespace Vekotin
             }
             else
             {
-                WidgetOpenButton.Content = "Load Widget";
+                WidgetOpenButton.Content = "Open Widget";
                 WidgetOpenButton.Appearance = ControlAppearance.Primary;
             }
         }
@@ -227,7 +227,7 @@ namespace Vekotin
 
         private void OnWidgetClosed(object? sender, EventArgs e)
         {
-            WidgetOpenButton.Content = "Load Widget";
+            WidgetOpenButton.Content = "Open Widget";
             WidgetOpenButton.Appearance = ControlAppearance.Primary;
         }
 
