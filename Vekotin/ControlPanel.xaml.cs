@@ -2,6 +2,7 @@
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.IO;
+using System.Text;
 using System.Text.Json;
 using System.Windows;
 using System.Windows.Controls;
@@ -55,7 +56,7 @@ namespace Vekotin
             }
         }
 
-        private void LoadAvailableWidgets()
+        private async void LoadAvailableWidgets()
         {
             var config = configManager.Current;
             string widgetsPath = config.Vekotin.WidgetPath ?? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Personal), "Vekotin", "Widgets");
@@ -63,6 +64,19 @@ namespace Vekotin
             if (!Directory.Exists(widgetsPath))
             {
                 Directory.CreateDirectory(widgetsPath);
+
+                var widgets = new WidgetExample[]
+                {
+                    new CpuMonitorWidget(),
+                    new ClockWidget()
+                };
+
+                // Write all widget examples in parallel
+                var tasks = new List<Task>();
+                foreach (var widget in widgets)
+                    tasks.Add(WriteWidgetAsync(widget, widgetsPath));
+
+                await Task.WhenAll(tasks);
             }
 
             AvailableWidgets.Clear();
@@ -97,6 +111,21 @@ namespace Vekotin
             }
 
             _widgetsView = CollectionViewSource.GetDefaultView(AvailableWidgets);
+        }
+
+        private async Task WriteWidgetAsync(WidgetExample widget, string basePath)
+        {
+            string folderPath = Path.Combine(basePath, widget.FolderName);
+            Directory.CreateDirectory(folderPath);
+
+            var tasks = new List<Task>();
+            foreach (var file in widget.Files)
+            {
+                string path = Path.Combine(folderPath, file.Key);
+                tasks.Add(File.WriteAllTextAsync(path, file.Value, Encoding.UTF8));
+            }
+
+            await Task.WhenAll(tasks);
         }
 
         /// <summary>
