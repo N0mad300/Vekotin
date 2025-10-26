@@ -8,13 +8,13 @@ namespace Vekotin.Services
     /// </summary>
     public class ConfigurationManager : IDisposable
     {
-        private readonly string configPath;
-        private readonly object configLock = new object();
-        private Config config;
-        private FileSystemWatcher? configWatcher;
-        private Timer? reloadTimer;
-        private bool disposed = false;
-        private bool isSaving = false;
+        private readonly string _configPath;
+        private readonly object _configLock = new object();
+        private Config _config;
+        private FileSystemWatcher? _configWatcher;
+        private Timer? _reloadTimer;
+        private bool _disposed = false;
+        private bool _isSaving = false;
 
         public event EventHandler<ConfigChangedEventArgs>? ConfigChanged;
 
@@ -25,9 +25,9 @@ namespace Vekotin.Services
         {
             get
             {
-                lock (configLock)
+                lock (_configLock)
                 {
-                    return config;
+                    return _config;
                 }
             }
         }
@@ -37,8 +37,8 @@ namespace Vekotin.Services
             if (string.IsNullOrWhiteSpace(appDataFolderPath))
                 throw new ArgumentException("App data folder path cannot be null or empty", nameof(appDataFolderPath));
 
-            configPath = Path.Combine(appDataFolderPath, Constants.ConfigFileName);
-            config = new Config();
+            _configPath = Path.Combine(appDataFolderPath, Constants.ConfigFileName);
+            _config = new Config();
 
             EnsureConfigExists(appDataFolderPath);
             Load(ConfigChangeType.Loaded);
@@ -50,7 +50,7 @@ namespace Vekotin.Services
         /// </summary>
         private void EnsureConfigExists(string appDataFolderPath)
         {
-            if (!File.Exists(configPath))
+            if (!File.Exists(_configPath))
             {
                 Directory.CreateDirectory(appDataFolderPath);
 
@@ -77,16 +77,16 @@ namespace Vekotin.Services
         {
             Config? loadedConfig = null;
 
-            lock (configLock)
+            lock (_configLock)
             {
                 try
                 {
-                    var configJson = File.ReadAllText(configPath);
+                    var configJson = File.ReadAllText(_configPath);
                     loadedConfig = JsonSerializer.Deserialize<Config>(configJson);
 
                     if (loadedConfig != null)
                     {
-                        config = loadedConfig;
+                        _config = loadedConfig;
                     }
                 }
                 catch (JsonException ex)
@@ -118,9 +118,9 @@ namespace Vekotin.Services
         /// </summary>
         public void Save()
         {
-            lock (configLock)
+            lock (_configLock)
             {
-                SaveInternal(config);
+                SaveInternal(_config);
             }
 
             OnConfigChanged(ConfigChangeType.Saved);
@@ -133,12 +133,12 @@ namespace Vekotin.Services
         {
             try
             {
-                isSaving = true;
+                _isSaving = true;
 
                 var jsonString = JsonSerializer.Serialize(configToSave,
                     new JsonSerializerOptions { WriteIndented = true });
 
-                File.WriteAllText(configPath, jsonString);
+                File.WriteAllText(_configPath, jsonString);
             }
             catch (IOException ex)
             {
@@ -149,7 +149,7 @@ namespace Vekotin.Services
                 // Reset the flag after a delay to account for file system latency
                 Task.Delay(1000).ContinueWith(_ =>
                 {
-                    isSaving = false;
+                    _isSaving = false;
                 });
             }
         }
@@ -159,9 +159,9 @@ namespace Vekotin.Services
         /// </summary>
         public WidgetConfig? GetWidgetConfig(string widgetName)
         {
-            lock (configLock)
+            lock (_configLock)
             {
-                return config.Widgets.TryGetValue(widgetName, out var widgetConfig)
+                return _config.Widgets.TryGetValue(widgetName, out var widgetConfig)
                     ? widgetConfig
                     : null;
             }
@@ -177,9 +177,9 @@ namespace Vekotin.Services
             if (widgetConfig == null)
                 throw new ArgumentNullException(nameof(widgetConfig));
 
-            lock (configLock)
+            lock (_configLock)
             {
-                config.Widgets[widgetName] = widgetConfig;
+                _config.Widgets[widgetName] = widgetConfig;
             }
         }
 
@@ -193,9 +193,9 @@ namespace Vekotin.Services
             if (updateAction == null)
                 throw new ArgumentNullException(nameof(updateAction));
 
-            lock (configLock)
+            lock (_configLock)
             {
-                if (config.Widgets.TryGetValue(widgetName, out var widgetConfig))
+                if (_config.Widgets.TryGetValue(widgetName, out var widgetConfig))
                 {
                     updateAction(widgetConfig);
                 }
@@ -207,19 +207,19 @@ namespace Vekotin.Services
         /// </summary>
         private void StartWatching()
         {
-            var directory = Path.GetDirectoryName(configPath);
-            var fileName = Path.GetFileName(configPath);
+            var directory = Path.GetDirectoryName(_configPath);
+            var fileName = Path.GetFileName(_configPath);
 
             if (string.IsNullOrEmpty(directory) || string.IsNullOrEmpty(fileName))
                 return;
 
-            configWatcher = new FileSystemWatcher(directory, fileName)
+            _configWatcher = new FileSystemWatcher(directory, fileName)
             {
                 NotifyFilter = NotifyFilters.LastWrite | NotifyFilters.Size
             };
 
-            configWatcher.Changed += OnFileChanged;
-            configWatcher.EnableRaisingEvents = true;
+            _configWatcher.Changed += OnFileChanged;
+            _configWatcher.EnableRaisingEvents = true;
         }
 
         /// <summary>
@@ -228,12 +228,12 @@ namespace Vekotin.Services
         private void OnFileChanged(object sender, FileSystemEventArgs e)
         {
             // Ignore changes we caused ourselves
-            if (isSaving)
+            if (_isSaving)
                 return;
 
             // Debounce: reset timer each time file changes
-            reloadTimer?.Dispose();
-            reloadTimer = new Timer(_ =>
+            _reloadTimer?.Dispose();
+            _reloadTimer = new Timer(_ =>
             {
                 try
                 {
@@ -253,9 +253,9 @@ namespace Vekotin.Services
         private void OnConfigChanged(ConfigChangeType changeType)
         {
             Config configCopy;
-            lock (configLock)
+            lock (_configLock)
             {
-                configCopy = config;
+                configCopy = _config;
             }
 
             ConfigChanged?.Invoke(this, new ConfigChangedEventArgs(changeType, configCopy));
@@ -263,11 +263,11 @@ namespace Vekotin.Services
 
         public void Dispose()
         {
-            if (!disposed)
+            if (!_disposed)
             {
-                configWatcher?.Dispose();
-                reloadTimer?.Dispose();
-                disposed = true;
+                _configWatcher?.Dispose();
+                _reloadTimer?.Dispose();
+                _disposed = true;
             }
         }
     }

@@ -7,22 +7,22 @@ namespace Vekotin.Bridges
     [ComVisible(true)]
     public class CpuBridge : IDisposable
     {
-        private readonly PerformanceCounter usageCounter;
-        private readonly PerformanceCounter clockSpeedCounter;
-        private readonly ManagementObject cpuInfo;
-        private bool disposed = false;
+        private readonly PerformanceCounter _usageCounter;
+        private readonly PerformanceCounter _clockSpeedCounter;
+        private readonly ManagementObject _cpuInfo;
+        private bool _disposed = false;
 
         public CpuBridge()
         {
-            usageCounter = new PerformanceCounter("Processor", "% Processor Time", "_Total");
-            usageCounter.NextValue(); // First call returns 0, so prime it
+            _usageCounter = new PerformanceCounter("Processor", "% Processor Time", "_Total");
+            _usageCounter.NextValue(); // First call returns 0, so prime it
 
-            clockSpeedCounter = new PerformanceCounter("Processor Information", "% of Maximum Frequency", "_Total");
-            clockSpeedCounter.NextValue(); // First call returns 0, so prime it
+            _clockSpeedCounter = new PerformanceCounter("Processor Information", "% of Maximum Frequency", "_Total");
+            _clockSpeedCounter.NextValue(); // First call returns 0, so prime it
 
             // Get the static CPU informations
             var searcher = new ManagementObjectSearcher("select * from Win32_Processor");
-            cpuInfo = searcher.Get().Cast<ManagementObject>().FirstOrDefault();
+            _cpuInfo = searcher.Get().Cast<ManagementObject>().FirstOrDefault();
         }
 
         // === Dynamic Informations ===
@@ -33,7 +33,7 @@ namespace Vekotin.Bridges
         /// <returns>A float representing the current usage percentage.</returns>
         public float GetUsage()
         {
-            return usageCounter.NextValue();
+            return _usageCounter.NextValue();
         }
 
         /// <summary>
@@ -42,11 +42,11 @@ namespace Vekotin.Bridges
         /// <returns>An integer representing the current clock speed in MHz.</returns>
         public int GetCurrentClockSpeed()
         {
-            if (cpuInfo == null) return 0;
+            if (_cpuInfo == null) return 0;
 
             // The "% of Maximum Frequency" counter gives a percentage. We multiply it by the max speed.
-            var maxSpeed = (uint)cpuInfo["MaxClockSpeed"];
-            var currentSpeedPercentage = clockSpeedCounter.NextValue() / 100.0f;
+            var maxSpeed = (uint)_cpuInfo["MaxClockSpeed"];
+            var currentSpeedPercentage = _clockSpeedCounter.NextValue() / 100.0f;
 
             return (int)(maxSpeed * currentSpeedPercentage);
         }
@@ -59,7 +59,7 @@ namespace Vekotin.Bridges
         /// <returns>A string containing the processor name.</returns>
         public string GetName()
         {
-            return cpuInfo?["Name"]?.ToString() ?? "Unknown CPU";
+            return _cpuInfo?["Name"]?.ToString() ?? "Unknown CPU";
         }
 
         /// <summary>
@@ -68,8 +68,8 @@ namespace Vekotin.Bridges
         /// <returns>An integer representing the number of cores.</returns>
         public int GetCoreCount()
         {
-            if (cpuInfo == null) return 0;
-            return (int)(uint)cpuInfo["NumberOfCores"];
+            if (_cpuInfo == null) return 0;
+            return (int)(uint)_cpuInfo["NumberOfCores"];
         }
 
         /// <summary>
@@ -78,8 +78,8 @@ namespace Vekotin.Bridges
         /// <returns>An integer representing the number of logical processors.</returns>
         public int GetLogicalProcessorCount()
         {
-            if (cpuInfo == null) return 0;
-            return (int)(uint)cpuInfo["NumberOfLogicalProcessors"];
+            if (_cpuInfo == null) return 0;
+            return (int)(uint)_cpuInfo["NumberOfLogicalProcessors"];
         }
 
         /// <summary>
@@ -88,18 +88,18 @@ namespace Vekotin.Bridges
         /// <returns>An integer representing the max clock speed in MHz.</returns>
         public int GetMaxClockSpeed()
         {
-            if (cpuInfo == null) return 0;
-            return (int)(uint)cpuInfo["MaxClockSpeed"];
+            if (_cpuInfo == null) return 0;
+            return (int)(uint)_cpuInfo["MaxClockSpeed"];
         }
 
         public void Dispose()
         {
-            if (!disposed)
+            if (!_disposed)
             {
-                usageCounter?.Dispose();
-                clockSpeedCounter?.Dispose();
-                cpuInfo?.Dispose();
-                disposed = true;
+                _usageCounter?.Dispose();
+                _clockSpeedCounter?.Dispose();
+                _cpuInfo?.Dispose();
+                _disposed = true;
             }
         }
     }

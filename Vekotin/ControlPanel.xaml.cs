@@ -7,6 +7,7 @@ using System.Text.Json;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
+
 using Vekotin.Services;
 using Wpf.Ui.Controls;
 
@@ -14,8 +15,8 @@ namespace Vekotin
 {
     public partial class ControlPanel : FluentWindow
     {
-        private readonly List<WidgetWindow> activeWidgets = new();
-        private readonly ConfigurationManager configManager;
+        private readonly List<WidgetWindow> _activeWidgets = new();
+        private readonly ConfigurationManager _configManager;
 
         public ObservableCollection<WidgetListItem> AvailableWidgets { get; set; }
         private ICollectionView _widgetsView;
@@ -30,8 +31,8 @@ namespace Vekotin
             // Initialize configuration manager
             var appDataPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),Constants.AppName);
 
-            configManager = new ConfigurationManager(appDataPath);
-            configManager.ConfigChanged += OnConfigChanged;
+            _configManager = new ConfigurationManager(appDataPath);
+            _configManager.ConfigChanged += OnConfigChanged;
 
             LoadAvailableWidgets();
         }
@@ -58,7 +59,7 @@ namespace Vekotin
 
         private async void LoadAvailableWidgets()
         {
-            var config = configManager.Current;
+            var config = _configManager.Current;
             string widgetsPath = config.Vekotin.WidgetPath ?? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Personal), "Vekotin", "Widgets");
 
             if (!Directory.Exists(widgetsPath))
@@ -173,7 +174,7 @@ namespace Vekotin
         private void OnWidgetSelected(WidgetListItem selected)
         {
             var widgetName = Path.GetFileName(selected.Path);
-            var widgetConfig = configManager.GetWidgetConfig(widgetName);
+            var widgetConfig = _configManager.GetWidgetConfig(widgetName);
 
             // Update toggle switches
             DraggableToggleSwitch.IsChecked = widgetConfig?.Draggable ?? false;
@@ -211,7 +212,7 @@ namespace Vekotin
             else
             {
                 // Widget is not open, create and show it
-                var widgetConfig = configManager.GetWidgetConfig(widgetName);
+                var widgetConfig = _configManager.GetWidgetConfig(widgetName);
 
                 if (widgetConfig == null)
                 {
@@ -227,7 +228,7 @@ namespace Vekotin
                         SavePosition = SavePositionToggleSwitch.IsChecked,
                         SnapToEdges = SnapToEdgesToggleSwitch.IsChecked
                     };
-                    configManager.SetWidgetConfig(widgetName, widgetConfig);
+                    _configManager.SetWidgetConfig(widgetName, widgetConfig);
                 }
                 else
                 {
@@ -236,15 +237,15 @@ namespace Vekotin
                     UpdateWidgetOptions(widgetConfig);
                 }
 
-                configManager.Save();
+                _configManager.Save();
 
                 var widget = new WidgetWindow(
                     selected.Path,
                     selected.Manifest,
-                    configManager);
+                    _configManager);
 
-                activeWidgets.Add(widget);
-                widget.Closed += (s, ev) => activeWidgets.Remove(widget);
+                _activeWidgets.Add(widget);
+                widget.Closed += (s, ev) => _activeWidgets.Remove(widget);
                 widget.Closed += OnWidgetClosed;
                 widget.Show();
 
@@ -275,7 +276,7 @@ namespace Vekotin
 
             var widgetName = Path.GetFileName(selected.Path);
 
-            configManager.UpdateWidgetConfig(widgetName, widgetConfig =>
+            _configManager.UpdateWidgetConfig(widgetName, widgetConfig =>
             {
                 switch (toggleControl.Name)
                 {
@@ -297,7 +298,7 @@ namespace Vekotin
                 }
             });
 
-            configManager.Save();
+            _configManager.Save();
         }
 
         private void UpdateWidgetOptions(WidgetConfig widgetConfig)
@@ -328,7 +329,7 @@ namespace Vekotin
 
         private WidgetWindow? FindWidgetWindow(string path)
         {
-            return activeWidgets.FirstOrDefault(w => w.WidgetPath == path);
+            return _activeWidgets.FirstOrDefault(w => w.WidgetPath == path);
         }
 
         protected override void OnClosing(System.ComponentModel.CancelEventArgs e)
@@ -339,9 +340,9 @@ namespace Vekotin
 
         protected override void OnClosed(EventArgs e)
         {
-            configManager?.Dispose();
+            _configManager?.Dispose();
 
-            foreach (var widget in activeWidgets.ToList())
+            foreach (var widget in _activeWidgets.ToList())
             {
                 widget.Close();
             }

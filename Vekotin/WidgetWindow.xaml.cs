@@ -14,17 +14,17 @@ namespace Vekotin
 {
     public partial class WidgetWindow : Window
     {
-        private readonly ConfigurationManager configManager;
-        private readonly WidgetManifest manifest;
-        private CoreWebView2Environment? webViewEnvironment;
-        private CpuBridge? cpuBridge;
+        private readonly ConfigurationManager _configManager;
+        private readonly WidgetManifest _manifest;
+        private CoreWebView2Environment? _webViewEnvironment;
+        private CpuBridge? _cpuBridge;
 
-        private bool isDevToolsOpen = false;
-        private bool isClosing = false;
+        private bool _isDevToolsOpen = false;
+        private bool _isClosing = false;
 
         // Snap settings
-        private const int SnapDistance = 20;    // Pixels from edge to trigger snap
-        private const int SnapMargin = 0;       // Final distance from edge when snapped
+        private int _snapDistance = 20;    // Pixels from edge to trigger snap
+        private int _snapMargin = 0;       // Final distance from edge when snapped
 
         public string WidgetPath { get; }
 
@@ -80,8 +80,8 @@ namespace Vekotin
                 throw new DirectoryNotFoundException($"Widget path not found: {widgetPath}");
 
             WidgetPath = widgetPath;
-            this.manifest = manifest ?? throw new ArgumentNullException(nameof(manifest));
-            this.configManager = configManager ?? throw new ArgumentNullException(nameof(configManager));
+            this._manifest = manifest ?? throw new ArgumentNullException(nameof(manifest));
+            this._configManager = configManager ?? throw new ArgumentNullException(nameof(configManager));
 
             InitializeComponent();
             InitializeWidget();
@@ -89,12 +89,12 @@ namespace Vekotin
 
         private void InitializeWidget()
         {
-            Title = manifest.Name ?? "Widget";
-            Width = manifest.Width;
-            Height = manifest.Height;
+            Title = _manifest.Name ?? "Widget";
+            Width = _manifest.Width;
+            Height = _manifest.Height;
 
             var widgetName = Path.GetFileName(WidgetPath);
-            var widgetConfig = configManager.GetWidgetConfig(widgetName);
+            var widgetConfig = _configManager.GetWidgetConfig(widgetName);
 
             Left = widgetConfig?.WindowX ?? 100;
             Top = widgetConfig?.WindowY ?? 100;
@@ -111,7 +111,7 @@ namespace Vekotin
             }
 
             // Listen for configuration changes
-            configManager.ConfigChanged += OnConfigurationChanged;
+            _configManager.ConfigChanged += OnConfigurationChanged;
         }
 
         /// <summary>
@@ -122,7 +122,7 @@ namespace Vekotin
             Dispatcher.Invoke(() =>
             {
                 var widgetName = Path.GetFileName(WidgetPath);
-                var widgetConfig = configManager.GetWidgetConfig(widgetName);
+                var widgetConfig = _configManager.GetWidgetConfig(widgetName);
 
                 WebView.CoreWebView2.Settings.IsNonClientRegionSupportEnabled = widgetConfig?.Draggable ?? true;
                 WebView.Reload();
@@ -138,7 +138,7 @@ namespace Vekotin
         private void UpdateDragHandlers()
         {
             var widgetName = Path.GetFileName(WidgetPath);
-            var widgetConfig = configManager.GetWidgetConfig(widgetName);
+            var widgetConfig = _configManager.GetWidgetConfig(widgetName);
 
             // Remove existing handlers first to avoid duplicates
             LocationChanged -= OnWidgetLocationChanged;
@@ -153,7 +153,7 @@ namespace Vekotin
         private void OnWidgetLocationChanged(object? sender, EventArgs e)
         {
             var widgetName = Path.GetFileName(WidgetPath);
-            var widgetConfig = configManager.GetWidgetConfig(widgetName);
+            var widgetConfig = _configManager.GetWidgetConfig(widgetName);
 
             // Apply snap to edges after dragging
             if (widgetConfig?.SnapToEdges == true)
@@ -219,23 +219,23 @@ namespace Vekotin
                                          Math.Min(distanceRight, distanceBottom));
 
             // Snap if within threshold
-            if (minDistance <= SnapDistance)
+            if (minDistance <= _snapDistance)
             {
                 if (minDistance == distanceLeft)
                 {
-                    Left = workingArea.Left + SnapMargin;
+                    Left = workingArea.Left + _snapMargin;
                 }
                 else if (minDistance == distanceTop)
                 {
-                    Top = workingArea.Top + SnapMargin;
+                    Top = workingArea.Top + _snapMargin;
                 }
                 else if (minDistance == distanceRight)
                 {
-                    Left = workingArea.Right - Width - SnapMargin;
+                    Left = workingArea.Right - Width - _snapMargin;
                 }
                 else if (minDistance == distanceBottom)
                 {
-                    Top = workingArea.Bottom - Height - SnapMargin;
+                    Top = workingArea.Bottom - Height - _snapMargin;
                 }
             }
         }
@@ -281,17 +281,17 @@ namespace Vekotin
                 string userDataFolderPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), Constants.AppName);
 
                 var widgetName = Path.GetFileName(WidgetPath);
-                var widgetConfig = configManager.GetWidgetConfig(widgetName);
+                var widgetConfig = _configManager.GetWidgetConfig(widgetName);
 
                 Directory.CreateDirectory(userDataFolderPath);
 
-                webViewEnvironment = await CoreWebView2Environment.CreateAsync(
+                _webViewEnvironment = await CoreWebView2Environment.CreateAsync(
                     userDataFolder: userDataFolderPath,
                     browserExecutableFolder: null,
                     options: new CoreWebView2EnvironmentOptions{}
                 );
 
-                await WebView.EnsureCoreWebView2Async(webViewEnvironment);
+                await WebView.EnsureCoreWebView2Async(_webViewEnvironment);
 
                 WebView.CoreWebView2.Settings.AreDevToolsEnabled = true;
                 WebView.CoreWebView2.Settings.AreDefaultContextMenusEnabled = false;
@@ -299,8 +299,8 @@ namespace Vekotin
                 WebView.CoreWebView2.Settings.IsNonClientRegionSupportEnabled = widgetConfig?.Draggable ?? true;
 
                 // Initialize and add bridges
-                cpuBridge = new CpuBridge();
-                WebView.CoreWebView2.AddHostObjectToScript("cpu", cpuBridge);
+                _cpuBridge = new CpuBridge();
+                WebView.CoreWebView2.AddHostObjectToScript("cpu", _cpuBridge);
 
                 // Navigate to widget
                 string htmlPath = Path.Combine(WidgetPath, "index.html");
@@ -335,10 +335,10 @@ namespace Vekotin
 
         public void OpenDevTools()
         {
-            if (WebView?.CoreWebView2 != null && !isDevToolsOpen)
+            if (WebView?.CoreWebView2 != null && !_isDevToolsOpen)
             {
                 WebView.CoreWebView2.OpenDevToolsWindow();
-                isDevToolsOpen = true;
+                _isDevToolsOpen = true;
             }
         }
 
@@ -355,7 +355,7 @@ namespace Vekotin
                     SetForegroundWindow(handle);
                     PostMessage(handle, WM_CLOSE, IntPtr.Zero, IntPtr.Zero);
                 }
-                isDevToolsOpen = false;
+                _isDevToolsOpen = false;
             }
             catch (Exception ex)
             {
@@ -391,7 +391,7 @@ namespace Vekotin
             exStyle |= WS_EX_TOOLWINDOW;
 
             var widgetName = Path.GetFileName(WidgetPath);
-            var widgetConfig = configManager.GetWidgetConfig(widgetName);
+            var widgetConfig = _configManager.GetWidgetConfig(widgetName);
 
             if (widgetConfig?.ClickThrough == true)
             {
@@ -423,10 +423,10 @@ namespace Vekotin
                 }
             }
 
-            cpuBridge?.Dispose();
-            cpuBridge = null;
+            _cpuBridge?.Dispose();
+            _cpuBridge = null;
 
-            webViewEnvironment = null;
+            _webViewEnvironment = null;
 
             WebView?.Dispose();
             if (WidgetBorder != null)
@@ -437,23 +437,23 @@ namespace Vekotin
 
         protected override async void OnClosing(CancelEventArgs e)
         {
-            if (isClosing)
+            if (_isClosing)
             {
                 base.OnClosing(e);
                 return;
             }
 
             e.Cancel = true;
-            isClosing = true;
+            _isClosing = true;
 
             try
             {
                 // Unsubscribe from config changes
-                configManager.ConfigChanged -= OnConfigurationChanged;
+                _configManager.ConfigChanged -= OnConfigurationChanged;
 
                 // Update config
                 var widgetName = Path.GetFileName(WidgetPath);
-                configManager.UpdateWidgetConfig(widgetName, widgetConfig =>
+                _configManager.UpdateWidgetConfig(widgetName, widgetConfig =>
                 {
                     widgetConfig.Active = false;
 
@@ -464,10 +464,10 @@ namespace Vekotin
                     }
                 });
 
-                configManager.Save();
+                _configManager.Save();
 
                 // Close DevTools if open
-                if (isDevToolsOpen)
+                if (_isDevToolsOpen)
                 {
                     CloseDevTools();
                 }
