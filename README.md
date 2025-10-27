@@ -82,6 +82,8 @@ The `widget.json` file act as a manifest for each widget and should look like th
 >**Important** : The `Name` value cannot be empty and `Width` and `Height` must contain a number 
 greater than zero
 
+To define draggable region on your widget you need to use the CSS property `-webkit-app-region: drag;`
+
 ## Bridges
 
 The widgets can use bridge in JavaScript to access OS level features (get hardware informations, control media playback (via SMTC), etc.).
