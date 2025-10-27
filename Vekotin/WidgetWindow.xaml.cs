@@ -96,8 +96,16 @@ namespace Vekotin
             var widgetName = Path.GetFileName(WidgetPath);
             var widgetConfig = _configManager.GetWidgetConfig(widgetName);
 
-            Left = widgetConfig?.WindowX ?? 100;
-            Top = widgetConfig?.WindowY ?? 100;
+            if (widgetConfig != null && widgetConfig.SavePosition == true)
+            {
+                Left = widgetConfig.WindowX;
+                Top = widgetConfig.WindowY;
+            }
+            else
+            {
+                Left = 100;
+                Top = 100;
+            }
 
             InitializeWebView();
 
