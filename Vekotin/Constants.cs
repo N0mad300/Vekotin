@@ -233,7 +233,8 @@ button, a, input, textarea {
                 License = "MIT",
                 Description = "Monitor CPU usage",
                 Width = 255,
-                Height = 210
+                Height = 210,
+                Bridges = new string[] { "CPU" }
             })
         };
     }
@@ -490,7 +491,8 @@ button, a, input, textarea {
                 License = "MIT",
                 Description = "Display time and date",
                 Width = 250,
-                Height = 210
+                Height = 210,
+                Bridges = new string[] {}
             })
         };
     }

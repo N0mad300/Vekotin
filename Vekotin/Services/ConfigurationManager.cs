@@ -351,5 +351,6 @@ namespace Vekotin.Services
         public string? Description { get; set; }
         public int Width { get; set; }
         public int Height { get; set; }
+        public string[]? Bridges { get; set; }
     }
 }

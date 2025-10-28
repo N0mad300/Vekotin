@@ -76,11 +76,15 @@ The `widget.json` file act as a manifest for each widget and should look like th
   "License": "",
   "Description": "",
   "Width": 1,
-  "Height": 1
+  "Height": 1,
+  "Bridges": []
 }
 ```
 >**Important** : The `Name` value cannot be empty and `Width` and `Height` must contain a number 
-greater than zero
+greater than zero, rest of value can be null
+
+The `"Bridges": ["CPU", "RAM"]` value is use to define to which bridges the widget will be get 
+access
 
 To define draggable region on your widget you need to use the CSS property `-webkit-app-region: drag;`
 
@@ -105,10 +109,6 @@ if (cpuBridge)
     }
 }
 ```
-
-The bridge are class of C# functions exposed to widgets through WebView2, since the number of bridges 
-will increase I plan to require widget to indicate which bridge they use to avoid having to instanciate 
-all bridges for each widget.
 
 ## Sponsor
 

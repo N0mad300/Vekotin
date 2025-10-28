@@ -17,7 +17,7 @@ namespace Vekotin
         private readonly ConfigurationManager _configManager;
         private readonly WidgetManifest _manifest;
         private CoreWebView2Environment? _webViewEnvironment;
-        private CpuBridge? _cpuBridge;
+        private List<IDisposable> _bridgeReferences = new();
 
         private bool _isDevToolsOpen = false;
         private bool _isClosing = false;
@@ -307,8 +307,25 @@ namespace Vekotin
                 WebView.CoreWebView2.Settings.IsNonClientRegionSupportEnabled = widgetConfig?.Draggable ?? true;
 
                 // Initialize and add bridges
-                _cpuBridge = new CpuBridge();
-                WebView.CoreWebView2.AddHostObjectToScript("cpu", _cpuBridge);
+                if (_manifest.Bridges != null)
+                {
+                    foreach (var bridge in _manifest.Bridges)
+                    {
+                        switch (bridge)
+                        {
+                            case "CPU":
+                                CpuBridge cpuBridge = new CpuBridge();
+                                WebView.CoreWebView2.AddHostObjectToScript($"{bridge.ToLower()}", cpuBridge);
+                                _bridgeReferences.Add(cpuBridge);
+                                break;
+                            case "RAM":
+                                RamBridge ramBridge = new RamBridge();
+                                WebView.CoreWebView2.AddHostObjectToScript($"{bridge.ToLower()}", ramBridge);
+                                _bridgeReferences.Add(ramBridge);
+                                break;
+                        }
+                    }
+                }
 
                 // Navigate to widget
                 string htmlPath = Path.Combine(WidgetPath, "index.html");
@@ -418,7 +435,13 @@ namespace Vekotin
             if (WebView?.CoreWebView2 != null)
             {
                 // Remove bridges
-                WebView.CoreWebView2.RemoveHostObjectFromScript("cpu");
+                if (_manifest.Bridges != null)
+                {
+                    foreach (var bridge in _manifest.Bridges)
+                    {
+                        WebView.CoreWebView2.RemoveHostObjectFromScript($"{bridge.ToLower()}");
+                    }
+                }
 
                 // Clean browsing data
                 try
@@ -431,8 +454,11 @@ namespace Vekotin
                 }
             }
 
-            _cpuBridge?.Dispose();
-            _cpuBridge = null;
+            foreach (var bridge in _bridgeReferences)
+            {
+                bridge?.Dispose();
+            }
+            _bridgeReferences.Clear();
 
             _webViewEnvironment = null;
 
