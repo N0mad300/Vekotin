@@ -9,6 +9,7 @@ using System.Windows.Controls;
 using System.Windows.Data;
 
 using Vekotin.Services;
+using Vekotin.Widgets;
 using Wpf.Ui.Controls;
 
 namespace Vekotin
@@ -69,6 +70,7 @@ namespace Vekotin
                 var widgets = new WidgetExample[]
                 {
                     new CpuMonitorWidget(),
+                    new RamMonitorWidget(),
                     new ClockWidget()
                 };
 

@@ -311,14 +311,14 @@ namespace Vekotin
                 {
                     foreach (var bridge in _manifest.Bridges)
                     {
-                        switch (bridge)
+                        switch (bridge.ToLower())
                         {
-                            case "CPU":
+                            case "cpu":
                                 CpuBridge cpuBridge = new CpuBridge();
                                 WebView.CoreWebView2.AddHostObjectToScript($"{bridge.ToLower()}", cpuBridge);
                                 _bridgeReferences.Add(cpuBridge);
                                 break;
-                            case "RAM":
+                            case "ram":
                                 RamBridge ramBridge = new RamBridge();
                                 WebView.CoreWebView2.AddHostObjectToScript($"{bridge.ToLower()}", ramBridge);
                                 _bridgeReferences.Add(ramBridge);
