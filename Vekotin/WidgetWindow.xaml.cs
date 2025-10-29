@@ -323,6 +323,11 @@ namespace Vekotin
                                 WebView.CoreWebView2.AddHostObjectToScript($"{bridge.ToLower()}", ramBridge);
                                 _bridgeReferences.Add(ramBridge);
                                 break;
+                            case "disk":
+                                DiskBridge diskBridge = new DiskBridge();
+                                WebView.CoreWebView2.AddHostObjectToScript($"{bridge.ToLower()}", diskBridge);
+                                _bridgeReferences.Add(diskBridge);
+                                break;
                         }
                     }
                 }
