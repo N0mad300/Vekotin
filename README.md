@@ -5,13 +5,14 @@ allow unlimited customization and are rendered using **Microsoft WebView2** to d
 performance. The control panel is made with **WPF** and **[WPF-UI](https://github.com/lepoco/wpfui)** 
 to provide a modern UI that allow you to control your widgets.
 
-![overview](./docs/images/overview.png)
+![vekotin](./docs/images/vekotin.png)
 
 ## Installation
 
 You can grab pre-built binaries from the **Releases** section, or you can build it using **Visual 
 Studio 2022** or by running the following commands in a terminal (be sure to have **git** and **.NET 
 9.0 SDK** installed) :
+
 ```bash
 # Clone the repository
 git clone https://github.com/N0mad300/Vekotin.git
@@ -61,13 +62,12 @@ widget to run), you need to close the app through is tray icon
 ## Widgets
 
 The widget are located at `C:\Users\Username\Documents\Vekotin\Widgets`, the folder will be 
-create at the first launch of the app with two widget examples (**Clock** and **CPU Monitor**). **Each 
+create at the first launch of the app with 4 widget examples. **Each 
 widget must have his own folder** and need to have a `widget.json` and `index.html` file in it to be 
 detected by the app.
 
-![widgets](./docs/images/widgets.png)
-
 The `widget.json` file act as a manifest for each widget and should look like this :
+
 ```json
 {
   "Name": "str",
@@ -101,8 +101,8 @@ window.chrome.webview.postMessage({
 
 The widgets can use bridge in JavaScript to access OS level features (get hardware informations, control media playback (via SMTC), etc.).
 
-Currently the only available bridge is the CPU bridge, here is an example of how to use it in 
-JavaScript (you can also check the code of CPU Monitor example widget) :
+Here is an example of how to use the CPU bridge in JavaScript (you can also check the code of CPU Monitor 
+example widget) :
 ```javascript
 const cpuBridge = window.chrome?.webview?.hostObjects?.cpu;
 
@@ -118,6 +118,15 @@ if (cpuBridge)
     }
 }
 ```
+
+Here is the list of the existing bridges (I'm currently working on a docs with all functions of every bridge) :
+- CPU
+- RAM
+- Disk
+
+## More Screenshots
+
+![overview](./docs/images/overview.png)
 
 ## Sponsor
 
