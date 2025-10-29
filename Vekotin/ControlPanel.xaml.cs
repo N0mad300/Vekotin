@@ -69,6 +69,7 @@ namespace Vekotin
 
                 var widgets = new WidgetExample[]
                 {
+                    new DiskMonitorWidget(),
                     new CpuMonitorWidget(),
                     new RamMonitorWidget(),
                     new ClockWidget()
