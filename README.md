@@ -65,7 +65,7 @@ create at the first launch of the app with two widget examples (**Clock** and **
 widget must have his own folder** and need to have a `widget.json` and `index.html` file in it to be 
 detected by the app.
 
-![overview](./docs/images/widgets.png)
+![widgets](./docs/images/widgets.png)
 
 The `widget.json` file act as a manifest for each widget and should look like this :
 ```json
@@ -87,6 +87,15 @@ The `"Bridges": ["CPU", "RAM"]` value is use to define to which bridges the widg
 access
 
 To define draggable region on your widget you need to use the CSS property `-webkit-app-region: drag;`
+
+If the size of the widget can change it must send a message to the WPF window that contains the WebView2, we can do it like this in the JavaScript of the widget :
+```javascript
+window.chrome.webview.postMessage({
+    type: 'resize',
+    width: totalWidth,
+    height: totalHeight
+});
+```
 
 ## Bridges
 

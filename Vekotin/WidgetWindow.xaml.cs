@@ -4,6 +4,7 @@ using System.IO;
 using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Interop;
+using System.Text.Json;
 
 using Microsoft.Web.WebView2.Core;
 
@@ -305,6 +306,27 @@ namespace Vekotin
                 WebView.CoreWebView2.Settings.AreDefaultContextMenusEnabled = false;
                 WebView.CoreWebView2.Settings.IsStatusBarEnabled = false;
                 WebView.CoreWebView2.Settings.IsNonClientRegionSupportEnabled = widgetConfig?.Draggable ?? true;
+
+                WebView.CoreWebView2.WebMessageReceived += (sender, args) =>
+                {
+                    var json = args.WebMessageAsJson;
+                    // Parse the JSON and handle the resize
+                    var message = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(json);
+
+                    if (message.TryGetValue("type", out var type) && type.GetString() == "resize")
+                    {
+                        var width = message["width"].GetDouble();
+                        var height = message["height"].GetDouble();
+                        Debug.WriteLine($"Changing width to {width}");
+                        Debug.WriteLine($"Changing height to {height}");
+
+                        Dispatcher.Invoke(() =>
+                        {
+                            this.Width = width;
+                            this.Height = height;
+                        });
+                    }
+                };
 
                 // Initialize and add bridges
                 if (_manifest.Bridges != null)
